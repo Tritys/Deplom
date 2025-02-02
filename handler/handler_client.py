@@ -15,7 +15,9 @@ from keyboard import keyboards as kb
 # Старт
 @router_client.message(CommandStart())
 async def start_cmd(message: types.Message, session: AsyncSession):
-    init_db()
+    telegram_id = message.from_user.id
+    username = message.from_user.username
+    full_name = message.from_user.full_name
     register_user(message.from_user.id, message.from_user.username)
     await message.answer("Прежде чем воспользоваться нашим ботом нужно пройти регистрация для этого нужно отправить свой номер телефона", reply_markup=kb.contact()) 
 
