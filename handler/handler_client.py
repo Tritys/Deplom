@@ -4,6 +4,9 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
+from sqlalchemy.orm import Session
+from database import engine, Base, get_db
+from database.models import User
 
 router_client = Router()
 
@@ -15,11 +18,28 @@ from keyboard import keyboards as kb
 # Старт
 @router_client.message(CommandStart())
 async def start_cmd(message: types.Message, session: AsyncSession):
+    db: Session = next(get_db())
     telegram_id = message.from_user.id
     username = message.from_user.username
     full_name = message.from_user.full_name
     register_user(message.from_user.id, message.from_user.username)
-    await message.answer("Прежде чем воспользоваться нашим ботом нужно пройти регистрация для этого нужно отправить свой номер телефона", reply_markup=kb.contact()) 
+    
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if not user:
+         # Сохранение пользователя в базе
+        user = User(
+            telegram_id=telegram_id,
+            username=username,
+            full_name=full_name
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        await message.reply("Вы успешно зарегистрированы!")
+    else:
+        await message.answer("Прежде чем воспользоваться нашим ботом нужно пройти регистрация для этого нужно отправить свой номер телефона", reply_markup=kb.contact())
+    
+
 
 
 # Категории
@@ -31,13 +51,23 @@ async def show_categories(message: Message):
 # Профиль
 @router_client.message(lambda message: message.text == "Профиль")
 async def show_categories(message: Message):
-    await message.answer('''
+    
+    """Обработчик команды /profile"""
+    db: Session = next(get_db())
+    telegram_id = message.from_user.id
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    if user:
+        await message.answer('''
                          Ваш профиль
-                         Ваш ID: 
-                         Никнейм:
-                         Имя:
-                         Номер телефона: 
+                         Ваш ID: {message.from_user.id}
+                         Никнейм: {message.from_user.username}
+                         Имя: {message.from_user.full_name}
+                         Номер телефона: {message.from_user.phone_number}
                          ''', reply_markup=kb.profile())
+    else:
+        await message.answer("Профиль не найден. Пожалуйста, пройдите регистрацию используя команду /start")
+
+    
     
 # Сайт
 @router_client.message(F.text == "Сайт")

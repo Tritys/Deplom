@@ -1,4 +1,13 @@
 import sqlite3
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+DATABASE_URL = "sqlite:///./users.db"
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
 def create_tables():
     conn = sqlite3.connect('flower_shop.db')
@@ -156,3 +165,10 @@ def update_order_status(order_id, status):
     cursor.execute('UPDATE orders SET status = ? WHERE order_id = ?', (status, order_id))
     conn.commit()
     conn.close()
+    
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
