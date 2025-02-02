@@ -1,49 +1,105 @@
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, BigInteger, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+import sqlite3
 
+def create_connection():
+    return sqlite3.connect('data/flower_shop.db')
 
-class Base(DeclarativeBase):
-    created: Mapped[DateTime] = mapped_column(DateTime, default=func.now())
-    updated: Mapped[DateTime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+def init_db():
+    conn = create_connection()
+    cursor = conn.cursor()
 
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS Users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER UNIQUE,
+        username TEXT
+    )
+    ''')
 
-class Category(Base):
-    __tablename__ = 'category'
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS Categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE
+    )
+    ''')
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(150), nullable=False)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS Bouquets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        description TEXT,
+        price REAL,
+        category_id INTEGER,
+        FOREIGN KEY (category_id) REFERENCES Categories (id)
+    )
+    ''')
 
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS Cart (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        bouquet_id INTEGER,
+        FOREIGN KEY (user_id) REFERENCES Users (id),
+        FOREIGN KEY (bouquet_id) REFERENCES Bouquets (id)
+    )
+    ''')
 
-class Product(Base):
-    __tablename__ = 'product'
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS Promotions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        description TEXT
+    )
+    ''')
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(150), nullable=False)
-    description: Mapped[str] = mapped_column(Text)
-    price: Mapped[float] = mapped_column(Numeric(5,2), nullable=False)
-    image: Mapped[str] = mapped_column(String(150))
-    category_id: Mapped[int] = mapped_column(ForeignKey('category.id', ondelete='CASCADE'), nullable=False)
+    conn.commit()
+    conn.close()
 
-    category: Mapped['Category'] = relationship(backref='product')
+def register_user(user_id, username):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('INSERT OR IGNORE INTO Users (user_id, username) VALUES (?, ?)', (user_id, username))
+    conn.commit()
+    conn.close()
 
+def get_categories():
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM Categories')
+    categories = cursor.fetchall()
+    conn.close()
+    return categories
 
-class User(Base):
-    __tablename__ = 'user'
+def get_bouquets_by_category(category_id):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM Bouquets WHERE category_id = ?', (category_id,))
+    bouquets = cursor.fetchall()
+    conn.close()
+    return bouquets
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(BigInteger, unique=True)
-    first_name: Mapped[str] = mapped_column(String(150), nullable=True)
-    last_name: Mapped[str]  = mapped_column(String(150), nullable=True)
-    phone: Mapped[str]  = mapped_column(String(13), nullable=True)
+def add_to_cart(user_id, bouquet_id):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO Cart (user_id, bouquet_id) VALUES (?, ?)', (user_id, bouquet_id))
+    conn.commit()
+    conn.close()
 
+def get_cart(user_id):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+    SELECT Bouquets.id, Bouquets.name, Bouquets.price 
+    FROM Cart 
+    JOIN Bouquets ON Cart.bouquet_id = Bouquets.id 
+    WHERE Cart.user_id = ?
+    ''', (user_id,))
+    cart_items = cursor.fetchall()
+    conn.close()
+    return cart_items
 
-class Cart(Base):
-    __tablename__ = 'cart'
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('user.user_id', ondelete='CASCADE'), nullable=False)
-    product_id: Mapped[int] = mapped_column(ForeignKey('product.id', ondelete='CASCADE'), nullable=False)
-    quantity: Mapped[int]
-
-    user: Mapped['User'] = relationship(backref='cart')
-    product: Mapped['Product'] = relationship(backref='cart')
+def remove_from_cart(user_id, bouquet_id):
+    conn = create_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM Cart WHERE user_id = ? AND bouquet_id = ?', (user_id, bouquet_id))
+    conn.commit()
+    conn.close()

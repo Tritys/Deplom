@@ -27,6 +27,29 @@ profile = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Меню', request_contact=True)]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
+profile = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='Заказать букет', request_contact=True), KeyboardButton(text='Корзина', request_contact=True)],  
+ #   [KeyboardButton(text='История заказов')],
+    [KeyboardButton(text='Меню', request_contact=True)]
+], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
+
+
+profile = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='Заказать букет', request_contact=True), KeyboardButton(text='Корзина', request_contact=True)],  
+ #   [KeyboardButton(text='История заказов')],
+    [KeyboardButton(text='Меню', request_contact=True)]
+], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
+
+profile = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='Заказать букет', request_contact=True), KeyboardButton(text='Корзина', request_contact=True)],  
+ #   [KeyboardButton(text='История заказов')],
+    [KeyboardButton(text='Меню', request_contact=True)]
+], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
+
+
+
+
+
 
 
 
