@@ -13,13 +13,12 @@ from dotenv import find_dotenv, load_dotenv
 # from keyboard import handler_admin
 from handler.handler_client import router_client
 # from handler.handler_admin import admin_router
-from handler import router
 
 start_time = datetime.now()
 logging.basicConfig(level=logging.INFO)
 
 storage = MemoryStorage()
-bot = Bot(token=os.getenv('TOKEN'), parse_mode=ParseMode.HTM)
+bot = Bot(token=os.getenv('TOKEN1'), parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 
 # dp.include_router(admin_router)
@@ -27,9 +26,8 @@ dp.include_router(router_client)
 
 load_dotenv(find_dotenv())
 async def main():
-    bot = Bot(token=os.getenv('TOKEN'), parse_mode=ParseMode.HTM)
-    dp = Dispatcher()
-    dp.include_router(router)
+    dp.include_router(router_client)
+    # dp.include_router(admin_router)
     
     await dp.start_polling(bot)
 
