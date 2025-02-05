@@ -5,14 +5,12 @@ from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from sqlalchemy.orm import Session
-from database import engine, Base, get_db
+from database.db import get_db , engine, Base, get_categories, get_bouquets_by_category, add_to_cart, get_cart, add_user
 from database.models import User
 
 router_client = Router()
 
-
-from database.db import init_db, register_user, get_categories, get_bouquets_by_category, add_to_cart, get_cart, remove_from_cart
-from keyboard import keyboards as kb
+import keyboard.keyboard_client as kb
 
 
 # Старт
@@ -22,7 +20,7 @@ async def start_cmd(message: types.Message, session: AsyncSession):
     telegram_id = message.from_user.id
     username = message.from_user.username
     full_name = message.from_user.full_name
-    register_user(message.from_user.id, message.from_user.username)
+    add_user(message.from_user.id, message.from_user.username)
     
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
     if not user:
