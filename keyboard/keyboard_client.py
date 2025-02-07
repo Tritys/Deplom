@@ -53,3 +53,6 @@ contact = ReplyKeyboardMarkup(keyboard=[
 
 def You_tube():
     keyboard.add(InlineKeyboardButton(text='YouTube', url="https://www.youtube.com/"))
+    
+def Website():
+    keyboard.add(InlineKeyboardButton(text='Сайт', url="https://www.youtube.com/"))
