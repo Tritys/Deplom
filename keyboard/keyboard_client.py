@@ -1,8 +1,8 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters.callback_data import CallbackData
-
-
+keyboard = InlineKeyboardBuilder()
+    
 # Меню
 main = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Профиль ', request_contact=True), KeyboardButton(text='Корзина ', request_contact=True)],
@@ -43,6 +43,13 @@ profile = ReplyKeyboardMarkup(keyboard=[
 
 
 
+
+
 contact = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Отправить контакт', request_contact=True)]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
+
+
+
+def You_tube():
+    keyboard.add(InlineKeyboardButton(text='YouTube', url="https://www.youtube.com/"))

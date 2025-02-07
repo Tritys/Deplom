@@ -7,6 +7,7 @@ from aiogram.fsm.state import StatesGroup, State
 from sqlalchemy.orm import Session
 from database.db import get_db , engine, Base, get_categories, get_bouquets_by_category, add_to_cart, get_cart, add_user
 from database.models import User
+from keyboard.keyboard_client import You_tube
 
 router_client = Router()
 
@@ -77,7 +78,7 @@ async def show_categories(message: Message):
 @router_client.message(F.text == "YouTube")
 async def show_categories(message: Message):
     categories = get_categories()
-    await message.answer("Выберите категорию:", reply_markup=kb.category())
+    await message.answer("Выберите категорию:", reply_markup=You_tube())
 
 # Акции
 @router_client.message(F.text == "Акции")
