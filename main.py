@@ -6,27 +6,25 @@ from aiogram.filters import Command
 import logging
 from datetime import datetime
 from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 
 from database.db import create_tables
-from dotenv import find_dotenv, load_dotenv
+from dotenv import find_dotenv, load_dotenv, dotenv_values
 
 # Импортируем роутеры
 from handler.handler_client import router_client
 # from handler.handler_admin import admin_router
 
 # Загрузка переменных окружения
+
 load_dotenv(find_dotenv())
 
 # Логирование
 start_time = datetime.now()
 logging.basicConfig(level=logging.INFO)
 
-# Инициализация бота и диспетчера
-BOT_TOKEN = os.getenv('TOKEN1')
-if not BOT_TOKEN:
-    raise ValueError("Токен бота не найден в переменных окружения!")
-
-bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
+TOKEN = os.getenv("TOKEN1")
+bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
