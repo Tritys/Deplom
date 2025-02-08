@@ -16,13 +16,20 @@ profile = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Меню', request_contact=True)]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
-# 1.Категории используется
+# 1.Заказать букет
 category = ReplyKeyboardMarkup(keyboard=[
-    [KeyboardButton(text='Заказать букет', request_contact=True), KeyboardButton(text='Корзина', request_contact=True)],  
-    [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='Профиль', request_contact=True)]
+    [KeyboardButton(text='Большие букеты', request_contact=True)],
+    [KeyboardButton(text='День Рождения', request_contact=True), KeyboardButton(text='8 марта', request_contact=True)],  
+    [KeyboardButton(text='в корзине', request_contact=True), KeyboardButton(text='в коробке', request_contact=True)],  
+    [KeyboardButton(text='Мужские', request_contact=True), KeyboardButton(text='Свадебные', request_contact=True)],  
+    [KeyboardButton(text='Спасибо', request_contact=True), KeyboardButton(text='Извини', request_contact=True)],  
+    [KeyboardButton(text='День матери', request_contact=True), KeyboardButton(text='Монобукеты', request_contact=True)],  
+    [KeyboardButton(text='Траурные', request_contact=True), KeyboardButton(text='Искусственные', request_contact=True)],  
+    [KeyboardButton(text='Цветы по штучно', request_contact=True)],
+    [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='Корзина', request_contact=True)]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
-# 2.Категории
+# 2.Заказать букет инлайн кнопки
 category = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Заказать букет', request_contact=True), KeyboardButton(text='Корзина', request_contact=True)],  
     [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='Профиль', request_contact=True)]
@@ -35,15 +42,15 @@ cart = ReplyKeyboardMarkup(keyboard=[
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 # Адрес магазина
-profile = ReplyKeyboardMarkup(keyboard=[
+shop_address = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='О магазине ℹ️', request_contact=True), KeyboardButton(text='Заказать букет', request_contact=True)],  
     [KeyboardButton(text='Меню', request_contact=True)]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
-
-
-
-
+# О магазине
+shop = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='О магазине ℹ️', request_contact=True)]
+], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 contact = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Отправить контакт', request_contact=True)]

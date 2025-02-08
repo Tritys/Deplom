@@ -10,39 +10,46 @@ from aiogram.enums import ParseMode
 from database.db import create_tables
 from dotenv import find_dotenv, load_dotenv
 
-# from keyboard import handler_admin
+# Импортируем роутеры
 from handler.handler_client import router_client
 # from handler.handler_admin import admin_router
 
+# Загрузка переменных окружения
+load_dotenv(find_dotenv())
+
+# Логирование
 start_time = datetime.now()
 logging.basicConfig(level=logging.INFO)
 
+# Инициализация бота и диспетчера
+BOT_TOKEN = os.getenv('TOKEN1')
+if not BOT_TOKEN:
+    raise ValueError("Токен бота не найден в переменных окружения!")
+
+bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 storage = MemoryStorage()
-bot = Bot(token=os.getenv('TOKEN1'), parse_mode=ParseMode.HTML)
-dp = Dispatcher()
+dp = Dispatcher(storage=storage)
 
-# dp.include_router(admin_router)
+# Подключение роутеров
 dp.include_router(router_client)
+# dp.include_router(admin_router)
 
-load_dotenv(find_dotenv())
 async def main():
-    dp.include_router(router_client)
-    # dp.include_router(admin_router)
-    
+    # Создание таблиц в базе данных
+    create_tables()
+
+    # Запуск бота
+    logging.info(f"Бот запущен в {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     await dp.start_polling(bot)
 
-async def on_shutdown(dp):
+async def on_shutdown():
     shutdown_time = datetime.now()
     uptime = shutdown_time - start_time
     logging.info(f"Бот выключен в {shutdown_time.strftime('%Y-%m-%d %H:%M:%S')}")
     logging.info(f"Время работы бота: {uptime}")
-    
+
 if __name__ == '__main__':
     try:
-        create_tables()
         asyncio.run(main())
-        print("Бот запущен!")
-        logging.info(f"Бот запущен в {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     except KeyboardInterrupt:
-        pass
-    
+        asyncio.run(on_shutdown())

@@ -39,16 +39,27 @@ async def start_cmd(message: types.Message, session: AsyncSession):
         await message.answer("Прежде чем воспользоваться нашим ботом нужно пройти регистрация для этого нужно отправить свой номер телефона", reply_markup=kb.contact())
     
 
+# Заказать букет
+@router_client.message(F.text == "Заказать букет")
+async def show_categories(message: Message):
+    categories = get_categories()
+    await message.answer("Выберите категорию:", reply_markup=kb.category())
+
+# Меню
+@router_client.message(F.text == "Меню")
+async def show_categories(message: Message):
+    categories = get_categories()
+    await message.answer("Выберите категорию:", reply_markup=kb.category())
 
 
 # Категории
-@router_client.message(lambda message: message.text == "Категории")
+@router_client.message(F.text == "Категории")
 async def show_categories(message: Message):
     categories = get_categories()
     await message.answer("Выберите категорию:", reply_markup=kb.category())
 
 # Профиль
-@router_client.message(lambda message: message.text == "Профиль")
+@router_client.message(F.text == "Профиль")
 async def show_categories(message: Message):
     
     """Обработчик команды /profile"""
@@ -68,17 +79,6 @@ async def show_categories(message: Message):
 
     
     
-# Сайт
-@router_client.message(F.text == "Сайт")
-async def show_categories(message: Message):
-    categories = get_categories()
-    await message.answer("Выберите категорию:", reply_markup=kb.category())
-
-# YouTube
-@router_client.message(F.text == "YouTube")
-async def show_categories(message: Message):
-    categories = get_categories()
-    await message.answer("Выберите категорию:", reply_markup=You_tube())
 
 # Акции
 @router_client.message(F.text == "Акции")
@@ -93,8 +93,17 @@ async def show_categories(message: Message):
     await message.answer('''
                          Наш магазин находится по адрессу ...
                          Работает каждый день с 9:00 до 18:00 
-                         Номер телефона для связи с администратором цветочного магазина 87369874326''', reply_markup=kb.category())
+                         Номер телефона для связи с администратором цветочного магазина 87369874326''', reply_markup=kb.shop_address())
 
+# О магазине
+@router_client.message(F.text == "О магазине ℹ️")
+async def show_categories(message: Message):
+    categories = get_categories()
+    await message.answer('''
+                         Всю интересующую вас информацию можно узнать из документа приведённого ниже
+                         А также на нашем сайте: 
+
+''', reply_markup=kb.shop())
 #Корзина
 @router_client.message(lambda message: message.text == "Корзина")
 async def show_cart(message: Message):
@@ -162,3 +171,17 @@ async def show_cart(message: Message):
 #         total_price = sum(item[2] for item in cart_items)
 #         await callback_query.answer(f"Заказ оформлен! Сумма к оплате: {total_price} руб.")
 #         remove_from_cart(callback_query.from_user.id, None)
+
+
+
+# Сайт
+@router_client.message(F.text == "Сайт")
+async def show_categories(message: Message):
+    categories = get_categories()
+    await message.answer("Выберите категорию:", reply_markup=kb.category())
+
+# YouTube
+@router_client.message(F.text == "YouTube")
+async def show_categories(message: Message):
+    categories = get_categories()
+    await message.answer("Выберите категорию:", reply_markup=You_tube())
