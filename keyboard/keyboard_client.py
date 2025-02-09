@@ -13,7 +13,7 @@ main = ReplyKeyboardMarkup(keyboard=[
 # Профиль
 profile = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Заказать букет', request_contact=True), KeyboardButton(text='Корзина', request_contact=True)],  
-    [KeyboardButton(text='Меню', request_contact=True)]
+    [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='Связь с администратороменю', request_contact=True)]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 # 1.Заказать букет
@@ -35,6 +35,35 @@ category = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='Профиль', request_contact=True)]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
+# Большие букеты
+category = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='Розы', request_contact=True), KeyboardButton(text='Тюльпаны', request_contact=True)],  
+    [KeyboardButton(text='Хризантемы', request_contact=True), KeyboardButton(text='Ромашки', request_contact=True)],  
+    [KeyboardButton(text='Лилии', request_contact=True), KeyboardButton(text='Гортензии', request_contact=True)],  
+    [KeyboardButton(text='Ирисы', request_contact=True), KeyboardButton(text='Нарциссы', request_contact=True)],  
+    [KeyboardButton(text='Пионы', request_contact=True), KeyboardButton(text='Эустома', request_contact=True)],  
+    [KeyboardButton(text='Траурные', request_contact=True), KeyboardButton(text='Ирисы', request_contact=True)],  
+    [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='назад', request_contact=True)]
+], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
+
+# # 2.Заказать букет инлайн кнопки
+# category = ReplyKeyboardMarkup(keyboard=[
+#     [KeyboardButton(text='Заказать букет', request_contact=True), KeyboardButton(text='Корзина', request_contact=True)],  
+#     [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='Профиль', request_contact=True)]
+# ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
+
+# Добавить букет в корзину 
+def ease_link_kb():
+    inline_kb_list = [
+        [InlineKeyboardButton(text="Назад", callback_data='back_'), InlineKeyboardButton(text="Далее", callback_data='next_')],
+        [InlineKeyboardButton(text="Добавить в корзину", callback_data='basket_')],
+        [InlineKeyboardButton(text="Меню", callback_data='menu-'), InlineKeyboardButton(text="Список категорий", callback_data='category_')],
+    ]
+    
+
+
+
+
 # Корзина
 cart = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Заказать букет', request_contact=True), KeyboardButton(text='Корзина', request_contact=True)],  
@@ -49,7 +78,7 @@ shop_address = ReplyKeyboardMarkup(keyboard=[
 
 # О магазине
 shop = ReplyKeyboardMarkup(keyboard=[
-    [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='О магазине ℹ️', request_contact=True)]
+    [KeyboardButton(text='Меню', request_contact=True), KeyboardButton(text='Профиль', request_contact=True)]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 contact = ReplyKeyboardMarkup(keyboard=[

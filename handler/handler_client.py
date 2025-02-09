@@ -44,6 +44,18 @@ async def start_cmd(message: types.Message, session: AsyncSession):
 async def show_categories(message: Message):
     categories = get_categories()
     await message.answer("Выберите категорию:", reply_markup=kb.category())
+    
+# назад в заказать букет
+@router_client.message(F.text == "назад")
+async def show_categories(message: Message):
+    categories = get_categories()
+    await message.answer("Выберите категорию:", reply_markup=kb.category())
+    
+# большие букеты
+@router_client.message(F.text == "Большие букеты")
+async def show_categories(message: Message):
+    categories = get_categories()
+    await message.answer("Выберите большой букет:", reply_markup=kb.category())
 
 # Меню
 @router_client.message(F.text == "Меню")
@@ -104,6 +116,16 @@ async def show_categories(message: Message):
                          А также на нашем сайте: 
 
 ''', reply_markup=kb.shop())
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
 #Корзина
 @router_client.message(lambda message: message.text == "Корзина")
 async def show_cart(message: Message):
