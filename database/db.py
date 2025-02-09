@@ -1,174 +1,118 @@
-import sqlite3
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
-DATABASE_URL = "sqlite:///./users.db"
+DATABASE_URL = "sqlite:///./flower_shop.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-def create_tables():
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
+# Модели
+class User(Base):
+    __tablename__ = "users"
+    user_id = Column(Integer, primary_key=True)
+    first_name = Column(String)
+    # last_name = Column(String)
+    username = Column(String)
+    phone = Column(String)
 
-    # Таблица пользователей
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            phone_number TEXT
-        )
-    ''')
+class Category(Base):
+    __tablename__ = "categories"
+    category_id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String)
 
-    # Таблица категорий
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS categories (
-            category_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT
-        )
-    ''')
+class Bouquet(Base):
+    __tablename__ = "bouquets"
+    bouquet_id = Column(Integer, primary_key=True, autoincrement=True)
+    category_id = Column(Integer, ForeignKey("categories.category_id"))
+    name = Column(String)
+    price = Column(Float)
+    description = Column(String)
+    image_url = Column(String)
+    discount = Column(Float, default=0)
 
-    # Таблица букетов
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS bouquets (
-            bouquet_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            category_id INTEGER,
-            name TEXT,
-            price REAL,
-            description TEXT,
-            FOREIGN KEY (category_id) REFERENCES categories (category_id)
-        )
-    ''')
+class Promotion(Base):
+    __tablename__ = "promotions"
+    promotion_id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String)
+    description = Column(String)
+    discount = Column(Float)
 
-    # Таблица акций
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS promotions (
-            promotion_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
-            description TEXT,
-            discount REAL
-        )
-    ''')
-
-    # Таблица корзины
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS cart (
-            cart_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            bouquet_id INTEGER,
-            quantity INTEGER,
-            FOREIGN KEY (user_id) REFERENCES users (user_id),
-            FOREIGN KEY (bouquet_id) REFERENCES bouquets (bouquet_id)
-        )
-    ''')
-
-    # Таблица заказов
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS orders (
-            order_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            total_price REAL,
-            delivery_type TEXT,
-            status TEXT DEFAULT 'pending',
-            FOREIGN KEY (user_id) REFERENCES users (user_id)
-        )
-    ''')
-
-    conn.commit()
-    conn.close()
-
-def add_user(user_id, phone_number):
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO users (user_id, phone_number) VALUES (?, ?)', (user_id, phone_number))
-    conn.commit()
-    conn.close()
-
-def get_user(user_id):
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM users WHERE user_id = ?', (user_id,))
-    user = cursor.fetchone()
-    conn.close()
-    return user
-
-def get_categories():
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM categories')
-    categories = cursor.fetchall()
-    conn.close()
-    return categories
-
-def get_bouquets_by_category(category_id):
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM bouquets WHERE category_id = ?', (category_id,))
-    bouquets = cursor.fetchall()
-    conn.close()
-    return bouquets
-
-def add_to_cart(user_id, bouquet_id, quantity=1):
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO cart (user_id, bouquet_id, quantity) VALUES (?, ?, ?)', (user_id, bouquet_id, quantity))
-    conn.commit()
-    conn.close()
-
-def get_cart(user_id):
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT bouquets.name, bouquets.price, cart.quantity 
-        FROM cart 
-        JOIN bouquets ON cart.bouquet_id = bouquets.bouquet_id 
-        WHERE cart.user_id = ?
-    ''', (user_id,))
-    cart_items = cursor.fetchall()
-    conn.close()
-    return cart_items
-
-def clear_cart(user_id):
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('DELETE FROM cart WHERE user_id = ?', (user_id,))
-    conn.commit()
-    conn.close()
-
-def get_promotions():
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM promotions')
-    promotions = cursor.fetchall()
-    conn.close()
-    return promotions
-
-def create_order(user_id, total_price, delivery_type):
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO orders (user_id, total_price, delivery_type) VALUES (?, ?, ?)', (user_id, total_price, delivery_type))
-    conn.commit()
-    conn.close()
-
-def get_admin_orders():
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM orders WHERE status = "pending"')
-    orders = cursor.fetchall()
-    conn.close()
-    return orders
-
-def update_order_status(order_id, status):
-    conn = sqlite3.connect('flower_shop.db')
-    cursor = conn.cursor()
-    cursor.execute('UPDATE orders SET status = ? WHERE order_id = ?', (status, order_id))
-    conn.commit()
-    conn.close()
+class Cart(Base):
+    __tablename__ = "cart"
     
+    cart_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    bouquet_id = Column(Integer, ForeignKey("bouquets.bouquet_id"))
+    quantity = Column(Integer)
+
+class Order(Base):
+    __tablename__ = "orders"
+    order_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"))
+    total_price = Column(Float)
+    delivery_type = Column(String)
+    status = Column(String, default="pending")
+
+# Создание таблиц
+Base.metadata.create_all(bind=engine)
+
+# Функции для работы с базой данных
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+def add_user(db: Session, user_id, first_name, last_name, phone):
+    new_user = User(user_id=user_id, first_name=first_name, last_name=last_name, phone=phone)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+def get_user(db: Session, user_id):
+    return db.query(User).filter(User.user_id == user_id).first()
+
+def get_categories(db: Session):
+    return db.query(Category).all()
+
+def get_bouquets_by_category(db: Session, category_id):
+    return db.query(Bouquet).filter(Bouquet.category_id == category_id).all()
+
+def add_to_cart(db: Session, user_id, bouquet_id, quantity=1):
+    new_cart_item = Cart(user_id=user_id, bouquet_id=bouquet_id, quantity=quantity)
+    db.add(new_cart_item)
+    db.commit()
+    db.refresh(new_cart_item)
+    return new_cart_item
+
+def get_cart(db: Session, user_id):
+    return db.query(Cart).filter(Cart.user_id == user_id).all()
+
+def clear_cart(db: Session, user_id):
+    db.query(Cart).filter(Cart.user_id == user_id).delete()
+    db.commit()
+
+def get_promotions(db: Session):
+    return db.query(Promotion).all()
+
+def create_order(db: Session, user_id, total_price, delivery_type):
+    new_order = Order(user_id=user_id, total_price=total_price, delivery_type=delivery_type)
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order)
+    return new_order
+
+def get_admin_orders(db: Session):
+    return db.query(Order).filter(Order.status == "pending").all()
+
+def update_order_status(db: Session, order_id, status):
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if order:
+        order.status = status
+        db.commit()
+        db.refresh(order)
+    return order

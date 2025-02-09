@@ -8,7 +8,7 @@ from datetime import datetime
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 
-from database.db import create_tables
+# from database.db import create_tables
 from dotenv import find_dotenv, load_dotenv, dotenv_values
 
 # Импортируем роутеры
@@ -33,8 +33,8 @@ dp.include_router(router_client)
 # dp.include_router(admin_router)
 
 async def main():
-    # Создание таблиц в базе данных
-    create_tables()
+    # # Создание таблиц в базе данных
+    # create_tables()
 
     # Запуск бота
     logging.info(f"Бот запущен в {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
