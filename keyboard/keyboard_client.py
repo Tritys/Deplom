@@ -24,8 +24,8 @@ category1 = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Мужские' ), KeyboardButton(text='Свадебные' )],  
     [KeyboardButton(text='Спасибо' ), KeyboardButton(text='Извини' )],  
     [KeyboardButton(text='День матери' ), KeyboardButton(text='Монобукеты' )],  
-    [KeyboardButton(text='Траурные' ), KeyboardButton(text='Искусственные' )],  
-    [KeyboardButton(text='Цветы по штучно' )],
+    [KeyboardButton(text='Траурные' ), KeyboardButton(text='Составные' )],  
+    # [KeyboardButton(text='Цветы по штучно' )],
     [KeyboardButton(text='Меню' ), KeyboardButton(text='Корзина' )]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
@@ -54,20 +54,38 @@ category2 = ReplyKeyboardMarkup(keyboard=[
 
 # Добавить букет в корзину 
 def get_bouquet_kd(bouquet_id, category_id):
-    keyboard = InlineKeyboardMarkup()
-    keyboard.add(InlineKeyboardButton(text="⬅️ Назад", callback_data=f"prev_{bouquet_id}_{category_id}"), InlineKeyboardButton(text="Далее ➡️", callback_data=f'next_{bouquet_id}_{category_id}'))
-    keyboard.add(InlineKeyboardButton(text="Добавить в корзину", callback_data=f"add_{bouquet_id}"))
-    keyboard.add(InlineKeyboardButton(text="Меню", callback_data='menu_'), InlineKeyboardButton(text="Список категорий", callback_data='category_'))
-    return keyboard
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="⬅️ Назад", callback_data=f"prev_{bouquet_id}_{category_id}"), InlineKeyboardButton(text="Далее ➡️", callback_data=f'next_{bouquet_id}_{category_id}'),
+                InlineKeyboardButton(text="Добавить в корзину", callback_data=f"add_{bouquet_id}"),
+                InlineKeyboardButton(text="Меню", callback_data='menu_'), InlineKeyboardButton(text="Список категорий", callback_data='category_'),
+            ] 
+        ]
+    )
     
-    
+# Клавиатура для выбора доставки
+delivery_keyboard = ReplyKeyboardMarkup(keyboard=[
+        [KeyboardButton(text="Доставка")],
+        [KeyboardButton(text="Самовывоз")],
+    ],
+    resize_keyboard=True
+)
+
+# Клавиатура для выбора оплаты
+payment_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Наличные")],
+        [KeyboardButton(text="Карта")],
+        [KeyboardButton(text="Перевод")],
+    ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 
 
 
 # Корзина
 cart = ReplyKeyboardMarkup(keyboard=[
-    [KeyboardButton(text='Заказать букет' ), KeyboardButton(text='Корзина' )],  
+    [KeyboardButton(text='Заказать букет' ), KeyboardButton(text='Оплатить' )],  
     [KeyboardButton(text='Меню' )]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
