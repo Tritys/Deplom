@@ -8,7 +8,7 @@ class Base(DeclarativeBase):
 
 # Категории
 class Category(Base):
-    __tablename__ = 'categorys'
+    __tablename__ = 'category'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
@@ -33,16 +33,15 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     first_name: Mapped[str] = mapped_column(String(150), nullable=True)
-    # last_name: Mapped[str] = mapped_column(String(150), nullable=True)
     username: Mapped[str] = mapped_column(String(150), nullable=True)
     phone: Mapped[str] = mapped_column(String(13), nullable=True)
 
 # Корзина
 class Cart(Base):
-    __tablename__ = 'carts'
+    __tablename__ = 'cart'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('user.user_id', ondelete='CASCADE'), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
     bouquet_id: Mapped[int] = mapped_column(ForeignKey('bouquets.id', ondelete='CASCADE'), nullable=False)
     quantity: Mapped[int] = mapped_column(default=1)
 
@@ -63,7 +62,7 @@ class Order(Base):
     __tablename__ = 'orders'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('user.user_id', ondelete='CASCADE'), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
     total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     delivery_type: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default='pending')

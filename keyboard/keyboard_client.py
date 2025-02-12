@@ -5,7 +5,7 @@ keyboard = InlineKeyboardBuilder()
     
 # Меню
 main = ReplyKeyboardMarkup(keyboard=[
-    [KeyboardButton(text='Профиль ' ), KeyboardButton(text='Корзина ' )],
+    [KeyboardButton(text='Профиль' ), KeyboardButton(text='Корзина' )],
     [KeyboardButton(text='Адрес магазина'), KeyboardButton(text='Заказать букет' )],
     [KeyboardButton(text='Сайт'), KeyboardButton(text='Youtube' )]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')

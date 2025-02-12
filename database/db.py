@@ -5,15 +5,15 @@ from sqlalchemy.orm import sessionmaker, Session
 DATABASE_URL = "sqlite:///./flower_shop.db"
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+AsyncSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # Модели
 class User(Base):
     __tablename__ = "users"
+    first_name = Column(Integer, autoincrement=True)
     user_id = Column(Integer, primary_key=True)
     first_name = Column(String)
-    # last_name = Column(String)
     username = Column(String)
     phone = Column(String)
 
@@ -41,7 +41,6 @@ class Promotion(Base):
 
 class Cart(Base):
     __tablename__ = "cart"
-    
     cart_id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id"))
     bouquet_id = Column(Integer, ForeignKey("bouquets.bouquet_id"))
@@ -55,26 +54,29 @@ class Order(Base):
     delivery_type = Column(String)
     status = Column(String, default="pending")
 
-# Создание таблиц
-Base.metadata.create_all(bind=engine)
+# Пересоздание таблиц
+# Base.metadata.drop_all(bind=engine)  # Удаление всех таблиц
+Base.metadata.create_all(bind=engine)  # Создание таблиц заново
 
 # Функции для работы с базой данных
 def get_db():
-    db = SessionLocal()
+    db = AsyncSession()
     try:
         yield db
     finally:
         db.close()
 
-def add_user(db: Session, user_id, first_name, last_name, phone):
-    new_user = User(user_id=user_id, first_name=first_name, last_name=last_name, phone=phone)
+def add_user(db: Session,id: int, user_id: int, first_name: str, username: str, phone: str = None):
+    new_user = User(id=id, user_id=user_id, first_name=first_name, username=username, phone=phone)
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
     return new_user
 
+
 def get_user(db: Session, user_id):
-    return db.query(User).filter(User.user_id == user_id).first()
+    with AsyncSession() as db:
+        return db.query(User).filter(User.user_id == user_id).first()
 
 def get_categories(db: Session):
     return db.query(Category).all()

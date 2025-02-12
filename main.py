@@ -33,8 +33,6 @@ dp.include_router(router_client)
 # dp.include_router(admin_router)
 
 async def main():
-    # # Создание таблиц в базе данных
-    # create_tables()
 
     # Запуск бота
     logging.info(f"Бот запущен в {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
