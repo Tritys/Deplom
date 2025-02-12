@@ -63,7 +63,7 @@ def get_bouquet_kd(bouquet_id, category_id):
             ] 
         ]
     )
-    
+ 
 # Клавиатура для выбора доставки
 delivery_keyboard = ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(text="Доставка")],
