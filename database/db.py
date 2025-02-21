@@ -69,8 +69,8 @@ def get_db():
 def add_user(db: Session,id: int, user_id: int, first_name: str, username: str, phone: str = None):
     new_user = User(id=id, user_id=user_id, first_name=first_name, username=username, phone=phone)
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    await db.commit()
+    await db.refresh(new_user)
     return new_user
 
 
