@@ -6,12 +6,13 @@ from aiogram import types
 
 
 main_admin = ReplyKeyboardMarkup(keyboard=[
-    [KeyboardButton(text='Профиль' )],
-    [KeyboardButton(text='Букеты'), KeyboardButton(text='Акции' )],
+    [KeyboardButton(text='профиль')],
+    [KeyboardButton(text='Букеты'), KeyboardButton(text='Акции_admin')],
+    [KeyboardButton(text='Заказы')],
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 
-def admin_bouquets():
+def admin_bouquets_kb():
     return InlineKeyboardMarkup( inline_keyboard=[
         [
             InlineKeyboardButton(text="Добавить букет", callback_data="add_bouquet"),
@@ -19,10 +20,16 @@ def admin_bouquets():
             InlineKeyboardButton(text="Изменить букет", callback_data="edit_bouquet"),
         ]])
     
-def admin_promotions():
+def admin_promotions_kb():
     return InlineKeyboardMarkup( inline_keyboard=[
         [
             InlineKeyboardButton("Добавить акцию", callback_data="add_promotion"),
             InlineKeyboardButton("Удалить акцию", callback_data="delete_promotion"),
             InlineKeyboardButton("Изменить акцию", callback_data="edit_promotion"),
         ]])
+
+# Профиль
+profile_admin = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='Букеты'), KeyboardButton(text='Акции_admin')],  
+    [KeyboardButton(text='меню')]
+], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')

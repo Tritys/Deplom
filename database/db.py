@@ -1,17 +1,23 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, select, Boolean
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+import logging
 
-DATABASE_URL = "sqlite:///./flower_shop.db"
+DATABASE_URL = "sqlite+aiosqlite:///./flower_shop.db"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-AsyncSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_async_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+AsyncSessionLocal  = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
 Base = declarative_base()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 # Модели
 class User(Base):
     __tablename__ = "users"
-    first_name = Column(Integer, autoincrement=True)
+    id = Column(Integer, autoincrement=True)
     user_id = Column(Integer, primary_key=True)
     first_name = Column(String)
     username = Column(String)
@@ -31,6 +37,8 @@ class Bouquet(Base):
     description = Column(String)
     image_url = Column(String)
     discount = Column(Float, default=0)
+    
+    available = Column(Boolean, default=True)
 
 class Promotion(Base):
     __tablename__ = "promotions"
@@ -38,6 +46,9 @@ class Promotion(Base):
     title = Column(String)
     description = Column(String)
     discount = Column(Float)
+    
+    start_date = Column(String)
+    end_date = Column(String)
 
 class Cart(Base):
     __tablename__ = "cart"
@@ -56,63 +67,77 @@ class Order(Base):
 
 # Пересоздание таблиц
 # Base.metadata.drop_all(bind=engine)  # Удаление всех таблиц
-Base.metadata.create_all(bind=engine)  # Создание таблиц заново
-
-# Функции для работы с базой данных
-def get_db():
-    db = AsyncSession()
+# Base.metadata.create_all(bind=engine)  # Создание таблиц заново
+async def create_tables():
     try:
-        yield db
-    finally:
-        db.close()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Таблицы созданы успешно!")
+    except Exception as e:
+        logger.error(f"Ошибка при создании таблиц: {e}")
+        
+# Функции для работы с базой данных
+async def get_db():
+    async with AsyncSessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
 
-def add_user(db: Session,id: int, user_id: int, first_name: str, username: str, phone: str = None):
+async def add_user(db: AsyncSession, id: int, user_id: int, first_name: str, username: str, phone: str = None):
     new_user = User(id=id, user_id=user_id, first_name=first_name, username=username, phone=phone)
     db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+    db.commit()
+    db.refresh(new_user)
     return new_user
 
 
-def get_user(db: Session, user_id):
-    with AsyncSession() as db:
-        return db.query(User).filter(User.user_id == user_id).first()
+async def get_user(db: AsyncSession, user_id: int):
+    result = await db.execute(select(User).filter(User.user_id == user_id))
+    return result.scalars().first()
 
-def get_categories(db: Session):
-    return db.query(Category).all()
 
-def get_bouquets_by_category(db: Session, category_id):
-    return db.query(Bouquet).filter(Bouquet.category_id == category_id).all()
+async def get_categories(db: AsyncSession):
+    result = await db.execute(select(Category))
+    return result.scalars().all()
 
-def add_to_cart(db: Session, user_id, bouquet_id, quantity=1):
+async def get_bouquets_by_category(db: AsyncSession, category_id: int):
+    result = await db.execute(select(Bouquet).filter(Bouquet.category_id == category_id))
+    return result.scalars().all()
+
+async def add_to_cart(db: AsyncSession, user_id: int, bouquet_id: int, quantity: int = 1):
     new_cart_item = Cart(user_id=user_id, bouquet_id=bouquet_id, quantity=quantity)
     db.add(new_cart_item)
     db.commit()
     db.refresh(new_cart_item)
     return new_cart_item
 
-def get_cart(db: Session, user_id):
-    return db.query(Cart).filter(Cart.user_id == user_id).all()
+async def get_cart(db: AsyncSession, user_id):
+    result = await db.execute(select(Cart).filter(Cart.user_id == user_id))
+    return result.scalars().all()
 
-def clear_cart(db: Session, user_id):
-    db.query(Cart).filter(Cart.user_id == user_id).delete()
-    db.commit()
+async def clear_cart(db: AsyncSession, user_id):
+    await db.execute(Cart.__table__.delete().where(Cart.user_id == user_id))
+    await db.commit()
 
-def get_promotions(db: Session):
-    return db.query(Promotion).all()
+async def get_promotions(db: AsyncSession):
+    result = await db.execute(select(Promotion))
+    return result.scalars().all()
 
-def create_order(db: Session, user_id, total_price, delivery_type):
+async def create_order(db: AsyncSession, user_id: int, total_price: float, delivery_type: str):
     new_order = Order(user_id=user_id, total_price=total_price, delivery_type=delivery_type)
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
     return new_order
 
-def get_admin_orders(db: Session):
-    return db.query(Order).filter(Order.status == "pending").all()
+async def get_admin_orders(db: AsyncSession):
+    result = await db.execute(select(Order).filter(Order.status == "pending"))
+    return result.scalars().all()
 
-def update_order_status(db: Session, order_id, status):
-    order = db.query(Order).filter(Order.order_id == order_id).first()
+async def update_order_status(db: AsyncSession, order_id, status):
+    order = await db.execute(select(Order).filter(Order.order_id == order_id))
+    order = order.scalars().first()
     if order:
         order.status = status
         db.commit()

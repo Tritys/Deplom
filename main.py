@@ -8,12 +8,12 @@ from datetime import datetime
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 
-# from database.db import create_tables
+from database.db import create_tables
 from dotenv import find_dotenv, load_dotenv, dotenv_values
 
 # Импортируем роутеры
 from handler.handler_client import router_client
-# from handler.handler_admin import admin_router
+from handler.handler_admin import router_admin
 
 # Загрузка переменных окружения
 
@@ -30,10 +30,10 @@ dp = Dispatcher(storage=storage)
 
 # Подключение роутеров
 dp.include_router(router_client)
-# dp.include_router(admin_router)
+dp.include_router(router_admin)
 
 async def main():
-
+    await create_tables()
     # Запуск бота
     logging.info(f"Бот запущен в {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     await dp.start_polling(bot)

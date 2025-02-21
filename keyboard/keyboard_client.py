@@ -7,13 +7,13 @@ keyboard = InlineKeyboardBuilder()
 main = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Профиль' ), KeyboardButton(text='Корзина' )],
     [KeyboardButton(text='Адрес магазина'), KeyboardButton(text='Заказать букет' )],
-    [KeyboardButton(text='Сайт'), KeyboardButton(text='Youtube' )]
+    [KeyboardButton(text='Сайт'), KeyboardButton(text='YouTube' )]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 # Профиль
 profile = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Заказать букет' ), KeyboardButton(text='Корзина' )],  
-    [KeyboardButton(text='Меню' ), KeyboardButton(text='Связь с администратороменю' )]
+    [KeyboardButton(text='Меню' ), KeyboardButton(text='Связь с администратором' )]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 # 1.Заказать букет
@@ -42,7 +42,7 @@ category2 = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Лилии' ), KeyboardButton(text='Гортензии' )],  
     [KeyboardButton(text='Ирисы' ), KeyboardButton(text='Нарциссы' )],  
     [KeyboardButton(text='Пионы' ), KeyboardButton(text='Эустома' )],  
-    [KeyboardButton(text='Траурные' ), KeyboardButton(text='Ирисы' )],  
+    [KeyboardButton(text='Траурные' ), KeyboardButton(text='Искуственные' )],  
     [KeyboardButton(text='Меню' ), KeyboardButton(text='назад' )]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
@@ -108,10 +108,18 @@ menu = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Меню')]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
-
+admin_contact = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='Позвонить'), KeyboardButton(text='В чате')]
+], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 def You_tube():
-    keyboard.add(InlineKeyboardButton(text='YouTube', url="https://www.youtube.com/"))
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text='YouTube', url="https://www.youtube.com/")]])
     
 def Website():
-    keyboard.add(InlineKeyboardButton(text='Сайт', url="https://www.youtube.com/"))
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text='Сайт', url="https://www.youtube.com/")]])
+    
+    
