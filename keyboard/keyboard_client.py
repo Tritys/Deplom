@@ -58,7 +58,7 @@ def get_bouquet_kd(bouquet_id, category_id):
         inline_keyboard=[
                 [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"prev_{bouquet_id}_{category_id}"), InlineKeyboardButton(text="Далее ➡️", callback_data=f'next_{bouquet_id}_{category_id}')],
                 [InlineKeyboardButton(text="Добавить в корзину", callback_data=f"add_{bouquet_id}")],
-                [InlineKeyboardButton(text="Меню", callback_data='menu_'), InlineKeyboardButton(text="Список категорий", callback_data='category_')],
+                [InlineKeyboardButton(text="Меню", callback_data='menu_'), InlineKeyboardButton(text="Список категорий", callback_data='category')],
         ]
     )
  

@@ -1,10 +1,12 @@
 from aiogram import Router, F, types
+import io
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from sqlalchemy.future import select
+from aiogram.types import InputMediaPhoto, InputFile
 from database.db import get_categories, get_bouquets_by_category, add_to_cart, get_cart, add_user, get_db, get_user
 from database.db import User, Category, Bouquet, Cart, Order, Promotion
 import logging
@@ -131,7 +133,7 @@ value2 = ['День Рождение', '8 марта', 'в корзине', 'в 
 
 value1 = ['Розы', 'Тюльпаны', 'Хризантемы', 'Ромашки', 'Лилии', 'Гортензии', 'Ирисы', 'Нарциссы', 'Пионы', 'Эустома', 'Траурные', 'Составные']
 
-@router_client.message(F.text.in_(value2 + value1))
+@router_client.message(F.text.in_(value2 + value1) or F.data.startswith("category"))
 # Общая функция для обработки категорий
 async def handle_category1(message: types.Message, state: FSMContext):
      async with AsyncSessionLocal() as db:
@@ -200,28 +202,62 @@ async def handle_category(message: types.Message):
 
 
 # Листание букетов
-@router_client.callback_query(F.data.startswith("prev_") or F.data.startswith("next_"))
+@router_client.callback_query(F.data.startswith("prev_") | F.data.startswith("next_"))
 async def navigate_bouquets(callback: CallbackQuery, state: FSMContext):
     async with AsyncSessionLocal() as db:  # Используем асинхронный контекстный менеджер
         try:
+            # Разбираем callback data
             data = callback.data.split("_")
-            action = data[0]
-            bouquet_id = int(data[1])
-            category_id = int(data[2])
+            action = data[0]  # "prev" или "next"
+            bouquet_id = int(data[1])  # ID текущего букета
+            category_id = int(data[2])  # ID категории
 
+            # Получаем все букеты в категории
             result = await db.execute(select(Bouquet).filter(Bouquet.category_id == category_id))
             bouquets = result.scalars().all()
-            current_index = next((i for i, b in enumerate(bouquets) if b.id == bouquet_id), 0)
+            
+            # Если букетов нет, выводим сообщение
+            if not bouquets:
+                await callback.answer("В этой категории пока нет букетов.")
+                return
 
+            # Находим индекс текущего букета
+            current_index = next((i for i, b in enumerate(bouquets) if b.bouquet_id == bouquet_id), 0)
+            
+            
+
+            # Определяем новый индекс в зависимости от действия
             if action == "prev":
                 new_index = (current_index - 1) % len(bouquets)
             else:
                 new_index = (current_index + 1) % len(bouquets)
 
-            bouquet = bouquets[new_index]
+            # Получаем новый букет
+            new_bouquet = bouquets[new_index]
+            
+            # Проверяем, есть ли изображение
+            if new_bouquet.image_url:
+                # Если image_url - это URL, используем его
+                if isinstance(new_bouquet.image_url, str):
+                    media = InputMediaPhoto(
+                        media=new_bouquet.image_url,
+                        caption=f"Букет: {new_bouquet.name}\nОписание: {new_bouquet.description}\nЦена: {new_bouquet.price} руб."
+                    )
+                # Если image_url - это бинарные данные, преобразуем их в InputFile
+                else:
+                    image_file = InputFile(io.BytesIO(new_bouquet.image_url), filename="bouquet.jpg")
+                    media = InputMediaPhoto(
+                        media=image_file,
+                        caption=f"Букет: {new_bouquet.name}\nОписание: {new_bouquet.description}\nЦена: {new_bouquet.price} руб."
+                    )
+            else:
+                await callback.answer("Изображение отсутствует.")
+                return
+
+            # Обновляем медиа и клавиатуру
             await callback.message.edit_media(
-                media=types.InputMediaPhoto(media=bouquet.image_url, caption=f"Букет: {bouquet.name}\nОписание: {bouquet.description}\nЦена: {bouquet.price} руб."),
-                reply_markup=get_bouquet_kd(bouquet.id, category_id)
+                media=media,
+                reply_markup=get_bouquet_kd(new_bouquet.bouquet_id, category_id)
             )
         except Exception as e:
             await callback.answer(f"Произошла ошибка: {e}")
