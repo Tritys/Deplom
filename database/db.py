@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 import logging
+from sqlalchemy.orm import relationship
 
 DATABASE_URL = "sqlite+aiosqlite:///./flower_shop.db"
 
@@ -37,8 +38,10 @@ class Bouquet(Base):
     description = Column(String)
     image_url = Column(String)
     discount = Column(Float, default=0)
-    
     available = Column(Boolean, default=True)
+    
+    # Определяем связь с моделью Cart
+    carts = relationship("Cart", back_populates="bouquet")
 
 class Promotion(Base):
     __tablename__ = "promotions"
@@ -56,6 +59,9 @@ class Cart(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"))
     bouquet_id = Column(Integer, ForeignKey("bouquets.bouquet_id"))
     quantity = Column(Integer)
+    
+    # Определяем связь с моделью Bouquet
+    bouquet = relationship("Bouquet", back_populates="carts")
 
 class Order(Base):
     __tablename__ = "orders"

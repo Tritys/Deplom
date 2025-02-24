@@ -1,16 +1,19 @@
 from aiogram import Router, F, types
 import io
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from aiogram.types import Message, CallbackQuery
+from sqlalchemy import update, delete
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
+from aiogram.utils.markdown import hbold, hunderline
 from aiogram.fsm.state import StatesGroup, State
 from sqlalchemy.future import select
 from aiogram.types import InputMediaPhoto, InputFile
-from database.db import get_categories, get_bouquets_by_category, add_to_cart, get_cart, add_user, get_db, get_user
+from database.db import  get_user
 from database.db import User, Category, Bouquet, Cart, Order, Promotion
 import logging
-from keyboard.keyboard_client import You_tube, get_bouquet_kd, Website, delivery_keyboard, payment_keyboard 
+from keyboard.keyboard_client import You_tube, get_bouquet_kd, Website, delivery_keyboard, payment_keyboard, get_cart_keyboard
 from database.db import AsyncSessionLocal
 
 router_client = Router()
@@ -267,18 +270,33 @@ async def navigate_bouquets(callback: CallbackQuery, state: FSMContext):
 async def add_to_cart(callback: CallbackQuery, state: FSMContext):
     async with AsyncSessionLocal() as db:
         try:
-            data = await state.get_data()
-            bouquet_id = data.get("bouquet_id")
-            
-            if not bouquet_id:
-                await callback.answer("Букет не выбран. Пожалуйста, выберите букет сначала.")
-                return
-
+            bouquet_id = int(callback.data.split("_")[1])  # Извлекаем bouquet_id
             user_id = callback.from_user.id
 
-            cart_item = Cart(user_id=user_id, bouquet_id=bouquet_id)
-            db.add(cart_item)
+            # Проверяем, есть ли уже такой букет в корзине
+            cart_item_query = select(Cart).where(
+                Cart.user_id == user_id,
+                Cart.bouquet_id == bouquet_id
+            )
+            cart_item_result = await db.execute(cart_item_query)
+            cart_item = cart_item_result.scalars().first()
+
+            if cart_item:
+                # Если букет уже в корзине, увеличиваем количество
+                cart_item.quantity += 1
+            else:
+                # Если букета нет в корзине, добавляем его
+                cart_item = Cart(user_id=user_id, bouquet_id=bouquet_id, quantity=1)
+                db.add(cart_item)
+
             await db.commit()
+
+            # Удаляем старое сообщение с корзиной
+            await callback.message.delete()
+
+            # Отправляем новое сообщение с обновленной корзиной
+            await show_cart(callback.message, state=state)
+
             await callback.answer("Букет добавлен в корзину!")
         except Exception as e:
             await callback.answer(f"Произошла ошибка: {e}")
@@ -342,42 +360,196 @@ async def show_categories3(message: Message):
 async def show_cart(message: types.Message, state: FSMContext):
     # Открываем асинхронную сессию с базой данных
     async with AsyncSessionLocal() as db:
-        user_id = message.from_user.id
+        try:
+            user_id = message.from_user.id
 
-        # Запрос для получения товаров в корзине пользователя
-        cart_query = select(Cart).where(Cart.user_id == user_id)
-        cart_result = await db.execute(cart_query)
-        cart_items = cart_result.scalars().all()
+            # Запрос для получения товаров в корзине с загрузкой связанных букетов
+            cart_query = (
+                select(Cart)
+                .where(Cart.user_id == user_id)
+                .options(selectinload(Cart.bouquet))  # Загружаем связанные объекты Bouquet
+            )
+            cart_result = await db.execute(cart_query)
+            cart_items = cart_result.scalars().all()
 
-        # Если корзина пуста
-        if not cart_items:
-            await message.answer("Ваша корзина пуста.")
-        else:
+            # Если корзина пуста
+            if not cart_items:
+                await message.answer("Ваша корзина пуста.")
+                return
+
             total_price = 0
-            cart_text = "Ваша корзина:\n"
+            cart_text = hunderline("Ваша корзина:") + "\n\n"
 
             # Перебираем товары в корзине
             for item in cart_items:
-                # Запрос для получения информации о букете
-                bouquet_query = select(Bouquet).where(Bouquet.id == item.bouquet_id)
-                bouquet_result = await db.execute(bouquet_query)
-                bouquet = bouquet_result.scalars().first()
+                if item.bouquet:
+                    price = item.bouquet.price if item.bouquet.price is not None else 0
+                    quantity = item.quantity if item.quantity is not None else 0
 
-                # Добавляем информацию о букете в текст корзины
-                if bouquet:
-                    cart_text += f"{bouquet.name} - {bouquet.price} руб. x {item.quantity}\n"
-                    total_price += bouquet.price * item.quantity
+                    cart_text += (
+                        f"{hbold(item.bouquet.name)} - {price} руб. x {quantity}\n"
+                        f"Описание: {item.bouquet.description}\n\n"
+                    )
+                    total_price += price * quantity
+                else:
+                    cart_text += f"{hbold('Букет удален')} (ID: {item.bouquet_id})\n\n"
 
             # Добавляем итоговую стоимость
-            cart_text += f"Итого: {total_price} руб."
+            cart_text += hunderline(f"Итого: {total_price} руб.")
 
-            # Отправляем сообщение с содержимым корзины
-            await message.answer(cart_text, reply_markup=delivery_keyboard)
+            # Отправляем сообщение с содержимым корзины и клавиатурой
+            await message.answer(
+                cart_text,
+                reply_markup=get_cart_keyboard(cart_items),
+                parse_mode="HTML"
+            )
 
             # Устанавливаем состояние выбора доставки
             await state.set_state(OrderState.choosing_delivery)
 
+        except Exception as e:
+            await message.answer(f"Произошла ошибка при загрузке корзины: {e}")
 
+@router_client.callback_query(F.data.startswith("remove_"))
+async def remove_from_cart(callback: CallbackQuery, state: FSMContext):
+    async with AsyncSessionLocal() as db:
+        try:
+            # Извлекаем bouquet_id из callback_data
+            bouquet_id = int(callback.data.split("_")[1])
+            user_id = callback.from_user.id
+
+            # Удаляем букет из корзины
+            await db.execute(
+                delete(Cart)
+                .where(Cart.user_id == user_id, Cart.bouquet_id == bouquet_id)
+            )
+            await db.commit()
+
+            # Удаляем старое сообщение с корзиной
+            await callback.message.delete()
+
+            # Отправляем новое сообщение с обновленной корзиной
+            await show_cart(callback.message, state=state)
+
+            await callback.answer("Букет удален из корзины.")
+        except Exception as e:
+            await callback.answer(f"Произошла ошибка: {e}")
+
+@router_client.callback_query(F.data == "checkout")
+async def checkout(callback: CallbackQuery, state: FSMContext):
+    await callback.answer("Оформление заказа...")
+    await callback.message.answer("Выберите способ доставки:", reply_markup=delivery_keyboard)
+    await state.set_state(OrderState.choosing_delivery)
+
+@router_client.callback_query(F.data.startswith("increase_"))
+async def increase_quantity(callback: CallbackQuery):
+    async with AsyncSessionLocal() as db:
+        try:
+            bouquet_id = int(callback.data.split("_")[1])
+            user_id = callback.from_user.id
+
+            # Находим элемент корзины
+            cart_item_query = select(Cart).where(
+                Cart.user_id == user_id,
+                Cart.bouquet_id == bouquet_id
+            )
+            cart_item_result = await db.execute(cart_item_query)
+            cart_item = cart_item_result.scalars().first()
+
+            if cart_item:
+                # Увеличиваем количество на 1
+                cart_item.quantity += 1
+                await db.commit()
+
+                # Обновляем сообщение с корзиной
+                await show_cart(callback.message, state=callback.bot.current_state(callback.from_user.id))
+            else:
+                await callback.answer("Элемент корзины не найден.")
+        except Exception as e:
+            await callback.answer(f"Произошла ошибка: {e}")
+
+@router_client.callback_query(F.data.startswith("decrease_"))
+async def decrease_quantity(callback: CallbackQuery, state: FSMContext):
+    async with AsyncSessionLocal() as db:
+        try:
+            bouquet_id = int(callback.data.split("_")[1])
+            user_id = callback.from_user.id
+
+            # Находим элемент корзины
+            cart_item_query = select(Cart).where(
+                Cart.user_id == user_id,
+                Cart.bouquet_id == bouquet_id
+            )
+            cart_item_result = await db.execute(cart_item_query)
+            cart_item = cart_item_result.scalars().first()
+
+            if cart_item:
+                if cart_item.quantity > 1:
+                    # Уменьшаем количество на 1
+                    cart_item.quantity -= 1
+                else:
+                    # Если количество равно 1, удаляем букет из корзины
+                    await db.execute(
+                        delete(Cart)
+                        .where(Cart.user_id == user_id, Cart.bouquet_id == bouquet_id)
+                    )
+                await db.commit()
+
+                # Удаляем старое сообщение с корзиной
+                await callback.message.delete()
+
+                # Отправляем новое сообщение с обновленной корзиной
+                await show_cart(callback.message, state=state)
+            else:
+                await callback.answer("Элемент корзины не найден.")
+        except Exception as e:
+            await callback.answer(f"Произошла ошибка: {e}")
+
+@router_client.callback_query(F.data.startswith("remove_"))
+async def remove_from_cart(callback: CallbackQuery):
+    async with AsyncSessionLocal() as db:
+        bouquet_id = int(callback.data.split("_")[1])
+        user_id = callback.from_user.id
+
+        # Удаляем букет из корзины
+        await db.execute(
+            delete(Cart)
+            .where(Cart.user_id == user_id, Cart.bouquet_id == bouquet_id)
+        )
+        await db.commit()
+
+        # Обновляем сообщение с корзиной
+        await show_cart(callback.message, callback.bot)
+
+@router_client.callback_query(F.data.startswith("increase_"))
+async def increase_quantity(callback: CallbackQuery, state: FSMContext):
+    async with AsyncSessionLocal() as db:
+        try:
+            bouquet_id = int(callback.data.split("_")[1])
+            user_id = callback.from_user.id
+
+            # Находим элемент корзины
+            cart_item_query = select(Cart).where(
+                Cart.user_id == user_id,
+                Cart.bouquet_id == bouquet_id
+            )
+            cart_item_result = await db.execute(cart_item_query)
+            cart_item = cart_item_result.scalars().first()
+
+            if cart_item:
+                # Увеличиваем количество на 1
+                cart_item.quantity += 1
+                await db.commit()
+
+                # Удаляем старое сообщение с корзиной
+                await callback.message.delete()
+
+                # Отправляем новое сообщение с обновленной корзиной
+                await show_cart(callback.message, state=state)
+            else:
+                await callback.answer("Элемент корзины не найден.")
+        except Exception as e:
+            await callback.answer(f"Произошла ошибка: {e}")
 
 # Выбор доставки
 @router_client.message(OrderState.choosing_delivery)

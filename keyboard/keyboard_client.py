@@ -82,11 +82,23 @@ payment_keyboard = ReplyKeyboardMarkup(
 
 
 # Корзина
-cart = ReplyKeyboardMarkup(keyboard=[
-    [KeyboardButton(text='Заказать букет' ), KeyboardButton(text='Оплатить' )],  
-    [KeyboardButton(text='Меню' )]
-], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
-
+def get_cart_keyboard(cart_items):
+    builder = InlineKeyboardBuilder()
+    
+    for item in cart_items:
+        # Кнопки для управления количеством
+        builder.button(text=f"➖", callback_data=f"decrease_{item.bouquet_id}")
+        builder.button(text=f"{item.quantity}", callback_data=f"quantity_{item.bouquet_id}")
+        builder.button(text=f"➕", callback_data=f"increase_{item.bouquet_id}")
+        # Кнопка для удаления букета
+        builder.button(text=f"❌ Удалить", callback_data=f"remove_{item.bouquet_id}")
+    
+    # Кнопка для оформления заказа
+    builder.button(text="Оформить заказ", callback_data="checkout")
+    
+    # Группируем кнопки: 3 кнопки на строку (управление количеством и удаление)
+    builder.adjust(3, 1)  # 3 кнопки в первой строке, 1 кнопка на второй строке
+    return builder.as_markup()
 # Адрес магазина
 shop_address = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='О магазине ℹ️' ), KeyboardButton(text='Заказать букет' )],  
