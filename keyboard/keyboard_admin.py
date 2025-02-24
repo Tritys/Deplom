@@ -13,12 +13,11 @@ main_admin = ReplyKeyboardMarkup(keyboard=[
 
 
 def admin_bouquets_kb():
-    return InlineKeyboardMarkup( inline_keyboard=[
-        [
-            InlineKeyboardButton(text="Добавить букет", callback_data="add_bouquet"),
-            InlineKeyboardButton(text="Удалить букет", callback_data="delete_bouquet"),
-            InlineKeyboardButton(text="Изменить букет", callback_data="edit_bouquet"),
-        ]])
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Добавить букет", callback_data="add_bouquet")],
+        [InlineKeyboardButton(text="Удалить букет", callback_data="delete_bouquet")],
+        [InlineKeyboardButton(text="Изменить букет", callback_data="edit_bouquet")],
+        ])
     
 def admin_promotions_kb():
     return InlineKeyboardMarkup( inline_keyboard=[

@@ -8,6 +8,7 @@ from sqlalchemy.future import select
 from aiogram.fsm.state import State, StatesGroup
 from keyboard.keyboard_admin import admin_bouquets_kb, admin_promotions_kb
 from aiogram import Dispatcher
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import logging
 logger = logging.getLogger(__name__)
@@ -51,133 +52,221 @@ async def show_profile(message: types.Message):
                 "Профиль не найден. Пожалуйста, пройдите регистрацию, используя команду /start"
             )
 
-# Букеты
-@router_admin.message(F.text == 'Букеты')
-async def process_bouquets(message: types.Message, state: FSMContext):
-    await message.answer("Добро пожаловать администратор!", reply_markup=admin_bouquets_kb())
-
-class AddBouquetState(StatesGroup):
-    waiting_for_name = State()
-    waiting_for_description = State()
-    waiting_for_price = State()
-
-@router_admin.callback_query(F.data == "add_bouquet")
-async def add_bouquet(callback: types.CallbackQuery):
-    logger.info("Обработчик 'add_bouquet' вызван.")
-    try:
-        await callback.message.answer("Введите название букета:")
-    except Exception as e:
-        logger.error(f"Ошибка в обработчике 'add_bouquet': {e}")
-
-@router_admin.message(AddBouquetState.waiting_for_name)
-async def process_bouquet_name(message: types.Message, state: FSMContext):
-    await state.update_data(name=message.text)
-    await message.answer("Введите описание букета:")
-    await state.set_state(AddBouquetState.waiting_for_description)
-
-@router_admin.message(AddBouquetState.waiting_for_description)
-async def process_bouquet_description(message: types.Message, state: FSMContext):
-    await state.update_data(description=message.text)
-    await message.answer("Введите цену букета:")
-    await state.set_state(AddBouquetState.waiting_for_price)
-
-@router_admin.message(AddBouquetState.waiting_for_price)
-async def process_bouquet_price(message: types.Message, state: FSMContext):
-    try:
-        price = float(message.text)
-        data = await state.get_data()
-        name = data.get("name")
-        description = data.get("description")
-
-        async with AsyncSessionLocal() as db:
-            new_bouquet = Bouquet(name=name, description=description, price=price)
-            db.add(new_bouquet)
-            await db.commit()
-            await message.answer(f"Букет '{name}' успешно добавлен!")
-    except ValueError:
-        await message.answer("Цена должна быть числом. Попробуйте снова.")
-    finally:
-        await state.clear()
-
-
-# Удаление букета
-@router_admin.callback_query(F.data == "delete_bouquet")
-async def delete_bouquet(callback: types.CallbackQuery):
+# Команда /categories - Показать категории
+@router_admin.message(Command("categorys"))
+async def show_categories(message: types.Message):
     async with AsyncSessionLocal() as db:
-        query = select(Bouquet)
-        result = await db.execute(query)
+        result = await db.execute(select(Category))
+        categorys = result.scalars().all()
+
+        if not categorys:
+            await message.answer("Категории не найдены.")
+            return
+
+        keyboard = InlineKeyboardBuilder()
+        for category in categorys:
+            keyboard.button(text=category.name, callback_data=f"category_{category.category_id}")
+        keyboard.adjust(1)
+        await message.answer("Выберите категорию:", reply_markup=keyboard.as_markup())
+
+# Обработка выбора категории
+@router_admin.callback_query(F.data.startswith("category_"))
+async def show_bouquets(callback: types.CallbackQuery):
+    category_id = int(callback.data.split("_")[1])
+    async with AsyncSessionLocal() as db:
+        category = await db.get(Category, category_id)
+        result = await db.execute(select(Bouquet).where(Bouquet.category_id == category_id))
         bouquets = result.scalars().all()
 
-        keyboard = InlineKeyboardMarkup(row_width=1)
+        if not bouquets:
+            await callback.message.answer(f"В категории '{category.name}' нет букетов.")
+            return
+
         for bouquet in bouquets:
-            keyboard.add(InlineKeyboardButton(bouquet.name, callback_data=f"delete_bouquet_{bouquet.bouquet_id}"))
+            text = (
+                f"Букет: {bouquet.name}\n"
+                f"Цена: {bouquet.price} руб.\n"
+                f"Описание: {bouquet.description}\n"
+                f"Скидка: {bouquet.discount}%\n"
+                f"Доступен: {'Да' if bouquet.available else 'Нет'}"
+            )
+            keyboard = InlineKeyboardBuilder()
+            keyboard.button(text="✏️ Редактировать", callback_data=f"edit_{bouquet.bouquet_id}")
+            keyboard.button(text="❌ Удалить", callback_data=f"delete_{bouquet.bouquet_id}")
+            keyboard.adjust(1)
+            await callback.message.answer(text, reply_markup=keyboard.as_markup())
 
-        await callback.message.answer("Выберите букет для удаления:", reply_markup=keyboard)
+# Обработка кнопки "Редактировать"
+@router_admin.callback_query(F.data.startswith("edit_"))
+async def edit_bouquet(callback: types.CallbackQuery):
+    bouquet_id = int(callback.data.split("_")[1])
+    await callback.message.answer(f"Редактирование букета. Введите новое название:")
+    # Здесь можно добавить логику для редактирования
 
-# Подтверждение удаления букета
-@router_admin.callback_query(F.data.startswith("delete_bouquet_"))
-async def confirm_delete_bouquet(callback: types.CallbackQuery):
-    bouquet_id = int(callback.data.split("_")[-1])
+# Обработка кнопки "Удалить"
+@router_admin.callback_query(F.data.startswith("delete_"))
+async def delete_bouquet(callback: types.CallbackQuery):
+    bouquet_id = int(callback.data.split("_")[1])
     async with AsyncSessionLocal() as db:
-        query = select(Bouquet).where(Bouquet.bouquet_id == bouquet_id)
-        result = await db.execute(query)
-        bouquet = result.scalars().first()
-
+        bouquet = await db.get(Bouquet, bouquet_id)
         if bouquet:
             await db.delete(bouquet)
             await db.commit()
-            await callback.message.answer(f"Букет '{bouquet.name}' удален.")
+            await callback.message.answer(f"Букет '{bouquet.name}' удалён.")
         else:
             await callback.message.answer("Букет не найден.")
 
-# Изменение букета
-@router_admin.callback_query(F.data == "edit_bouquet")
-async def edit_bouquet(callback: types.CallbackQuery):
+# Команда /add_bouquet - Добавить букет
+@router_admin.message(Command("add_bouquet"))
+async def add_bouquet(message: types.Message):
     async with AsyncSessionLocal() as db:
-        query = select(Bouquet)
-        result = await db.execute(query)
-        bouquets = result.scalars().all()
+        result = await db.execute(select(Category))
+        categories = result.scalars().all()
 
-        keyboard = InlineKeyboardMarkup(row_width=1)
-        for bouquet in bouquets:
-            keyboard.add(InlineKeyboardButton(bouquet.name, callback_data=f"edit_bouquet_{bouquet.bouquet_id}"))
-
-        await callback.message.answer("Выберите букет для изменения:", reply_markup=keyboard)
-
-@router_admin.callback_query(F.data.startswith("edit_bouquet_"))
-async def process_edit_bouquet(callback: types.CallbackQuery, state: FSMContext):
-    bouquet_id = int(callback.data.split("_")[-1])
-    await state.update_data(bouquet_id=bouquet_id)  # Сохраняем ID букета в состоянии
-    await callback.message.answer("Введите новое название букета:")
-
-@router_admin.message(F.text)
-async def save_edited_bouquet(message: types.Message, state: FSMContext):
-    try:
-        data = await state.get_data()
-        if 'bouquet_id' not in data:
-            logger.error("Ключ 'bouquet_id' отсутствует в состоянии.")
-            await message.answer("Ошибка: ID букета не найден. Пожалуйста, начните процесс заново.")
+        if not categories:
+            await message.answer("Сначала добавьте категории.")
             return
 
-        bouquet_id = data['bouquet_id']
-        new_name = message.text
+        keyboard = InlineKeyboardBuilder()
+        for category in categories:
+            keyboard.button(text=category.name, callback_data=f"add_to_{category.category_id}")
+        keyboard.adjust(1)
+        await message.answer("Выберите категорию для добавления букета:", reply_markup=keyboard.as_markup())
 
-        async with AsyncSessionLocal() as db:
-            query = select(Bouquet).where(Bouquet.bouquet_id == bouquet_id)
-            result = await db.execute(query)
-            bouquet = result.scalars().first()
+# Обработка выбора категории для добавления букета
+@router_admin.callback_query(F.data.startswith("add_to_"))
+async def add_bouquet_to_category(callback: types.CallbackQuery):
+    category_id = int(callback.data.split("_")[2])
+    await callback.message.answer(f"Введите название букета для категории {category_id}:")
+    # Здесь можно добавить логику для добавления букета
 
-            if bouquet:
-                bouquet.name = new_name
-                await db.commit()
-                await message.answer(f"Букет успешно изменен на '{new_name}'.")
-            else:
-                await message.answer("Букет не найден.")
+# # Букеты
+# @router_admin.message(F.text == 'Букеты')
+# async def process_bouquets(message: types.Message, state: FSMContext):
+#     await message.answer("Добро пожаловать администратор!", reply_markup=admin_bouquets_kb())
+
+# class AddBouquetState(StatesGroup):
+#     waiting_for_name = State()
+#     waiting_for_description = State()
+#     waiting_for_price = State()
+
+# @router_admin.callback_query(F.data == "add_bouquet")
+# async def add_bouquet(callback: types.CallbackQuery):
+#     logger.info("Обработчик 'add_bouquet' вызван.")
+#     try:
+#         await callback.message.answer("Введите название букета:")
+#     except Exception as e:
+#         logger.error(f"Ошибка в обработчике 'add_bouquet': {e}")
+
+# @router_admin.message(AddBouquetState.waiting_for_name)
+# async def process_bouquet_name(message: types.Message, state: FSMContext):
+#     await state.update_data(name=message.text)
+#     await message.answer("Введите описание букета:")
+#     await state.set_state(AddBouquetState.waiting_for_description)
+
+# @router_admin.message(AddBouquetState.waiting_for_description)
+# async def process_bouquet_description(message: types.Message, state: FSMContext):
+#     await state.update_data(description=message.text)
+#     await message.answer("Введите цену букета:")
+#     await state.set_state(AddBouquetState.waiting_for_price)
+
+# @router_admin.message(AddBouquetState.waiting_for_price)
+# async def process_bouquet_price(message: types.Message, state: FSMContext):
+#     try:
+#         price = float(message.text)
+#         data = await state.get_data()
+#         name = data.get("name")
+#         description = data.get("description")
+
+#         async with AsyncSessionLocal() as db:
+#             new_bouquet = Bouquet(name=name, description=description, price=price)
+#             db.add(new_bouquet)
+#             await db.commit()
+#             await message.answer(f"Букет '{name}' успешно добавлен!")
+#     except ValueError:
+#         await message.answer("Цена должна быть числом. Попробуйте снова.")
+#     finally:
+#         await state.clear()
+
+
+# # Удаление букета
+# @router_admin.callback_query(F.data == "delete_bouquet")
+# async def delete_bouquet(callback: types.CallbackQuery):
+#     async with AsyncSessionLocal() as db:
+#         query = select(Bouquet)
+#         result = await db.execute(query)
+#         bouquets = result.scalars().all()
+
+#         keyboard = InlineKeyboardMarkup(row_width=1)
+#         for bouquet in bouquets:
+#             keyboard.add(InlineKeyboardButton(bouquet.name, callback_data=f"delete_bouquet_{bouquet.bouquet_id}"))
+
+#         await callback.message.answer("Выберите букет для удаления:", reply_markup=keyboard)
+
+# # Подтверждение удаления букета
+# @router_admin.callback_query(F.data.startswith("delete_bouquet_"))
+# async def confirm_delete_bouquet(callback: types.CallbackQuery):
+#     bouquet_id = int(callback.data.split("_")[-1])
+#     async with AsyncSessionLocal() as db:
+#         query = select(Bouquet).where(Bouquet.bouquet_id == bouquet_id)
+#         result = await db.execute(query)
+#         bouquet = result.scalars().first()
+
+#         if bouquet:
+#             await db.delete(bouquet)
+#             await db.commit()
+#             await callback.message.answer(f"Букет '{bouquet.name}' удален.")
+#         else:
+#             await callback.message.answer("Букет не найден.")
+
+# # Изменение букета
+# @router_admin.callback_query(F.data == "edit_bouquet")
+# async def edit_bouquet(callback: types.CallbackQuery):
+#     async with AsyncSessionLocal() as db:
+#         query = select(Bouquet)
+#         result = await db.execute(query)
+#         bouquets = result.scalars().all()
+
+#         keyboard = InlineKeyboardMarkup(row_width=1)
+#         for bouquet in bouquets:
+#             keyboard.add(InlineKeyboardButton(bouquet.name, callback_data=f"edit_bouquet_{bouquet.bouquet_id}"))
+
+#         await callback.message.answer("Выберите букет для изменения:", reply_markup=keyboard)
+
+# @router_admin.callback_query(F.data.startswith("edit_bouquet_"))
+# async def process_edit_bouquet(callback: types.CallbackQuery, state: FSMContext):
+#     bouquet_id = int(callback.data.split("_")[-1])
+#     await state.update_data(bouquet_id=bouquet_id)  # Сохраняем ID букета в состоянии
+#     await callback.message.answer("Введите новое название букета:")
+
+# @router_admin.message(F.text)
+# async def save_edited_bouquet(message: types.Message, state: FSMContext):
+#     try:
+#         data = await state.get_data()
+#         # if 'bouquet_id' not in data:
+#         #     logger.error("Ключ 'bouquet_id' отсутствует в состоянии.")
+#         #     await message.answer("Ошибка: ID букета не найден. Пожалуйста, начните процесс заново.")
+#         #     return
+
+#         bouquet_id = data['bouquet_id']
+#         new_name = message.text
+
+#         async with AsyncSessionLocal() as db:
+#             query = select(Bouquet).where(Bouquet.bouquet_id == bouquet_id)
+#             result = await db.execute(query)
+#             bouquet = result.scalars().first()
+
+#             if bouquet:
+#                 bouquet.name = new_name
+#                 await db.commit()
+#                 await message.answer(f"Букет успешно изменен на '{new_name}'.")
+#             else:
+#                 await message.answer("Букет не найден.")
         
-        await state.clear()
-    except Exception as e:
-        logger.error(f"Ошибка при изменении букета: {e}")
-        await message.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
+#         await state.clear()
+#     except Exception as e:
+#         logger.error(f"Ошибка при изменении букета: {e}")
+#         await message.answer("Произошла ошибка. Пожалуйста, попробуйте снова.")
 
 # Акции
 @router_admin.message(F.text == 'Акции_admin')
@@ -308,5 +397,5 @@ async def save_changed_order_status(message: types.Message, state: FSMContext):
     await state.clear()
 
 # Регистрация обработчиков
-def register_handlers_admin(dp: Dispatcher):
-    dp.include_router(router_admin)
+def register_handlers_admin(router_admin: Dispatcher):
+    router_admin.include_router(router_admin)

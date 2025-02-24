@@ -19,10 +19,10 @@ profile = ReplyKeyboardMarkup(keyboard=[
 # 1.Заказать букет
 category1 = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Большие букеты' )],
-    [KeyboardButton(text='День Рождения' ), KeyboardButton(text='8 марта' )],  
+    [KeyboardButton(text='День Рождение' ), KeyboardButton(text='8 марта' )],  
     [KeyboardButton(text='в корзине' ), KeyboardButton(text='в коробке' )],  
     [KeyboardButton(text='Мужские' ), KeyboardButton(text='Свадебные' )],  
-    [KeyboardButton(text='Спасибо' ), KeyboardButton(text='Извини' )],  
+    [KeyboardButton(text='Спасибо' ), KeyboardButton(text='Вместо извенений' )],  
     [KeyboardButton(text='День матери' ), KeyboardButton(text='Монобукеты' )],  
     [KeyboardButton(text='Траурные' ), KeyboardButton(text='Составные' )],  
     # [KeyboardButton(text='Цветы по штучно' )],
@@ -42,7 +42,7 @@ category2 = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Лилии' ), KeyboardButton(text='Гортензии' )],  
     [KeyboardButton(text='Ирисы' ), KeyboardButton(text='Нарциссы' )],  
     [KeyboardButton(text='Пионы' ), KeyboardButton(text='Эустома' )],  
-    [KeyboardButton(text='Траурные' ), KeyboardButton(text='Искуственные' )],  
+    [KeyboardButton(text='Траурные' ), KeyboardButton(text='Искусственные' )],  
     [KeyboardButton(text='Меню' ), KeyboardButton(text='назад' )]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
@@ -56,11 +56,9 @@ category2 = ReplyKeyboardMarkup(keyboard=[
 def get_bouquet_kd(bouquet_id, category_id):
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="⬅️ Назад", callback_data=f"prev_{bouquet_id}_{category_id}"), InlineKeyboardButton(text="Далее ➡️", callback_data=f'next_{bouquet_id}_{category_id}'),
-                InlineKeyboardButton(text="Добавить в корзину", callback_data=f"add_{bouquet_id}"),
-                InlineKeyboardButton(text="Меню", callback_data='menu_'), InlineKeyboardButton(text="Список категорий", callback_data='category_'),
-            ] 
+                [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"prev_{bouquet_id}_{category_id}"), InlineKeyboardButton(text="Далее ➡️", callback_data=f'next_{bouquet_id}_{category_id}')],
+                [InlineKeyboardButton(text="Добавить в корзину", callback_data=f"add_{bouquet_id}")],
+                [InlineKeyboardButton(text="Меню", callback_data='menu_'), InlineKeyboardButton(text="Список категорий", callback_data='category_')],
         ]
     )
  
@@ -110,6 +108,10 @@ menu = ReplyKeyboardMarkup(keyboard=[
 
 admin_contact = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Позвонить'), KeyboardButton(text='В чате')]
+], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
+
+contact_as = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='Меню')]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
 
 def You_tube():

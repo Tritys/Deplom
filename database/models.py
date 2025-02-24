@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, BigInteger, func
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, BigInteger, func, Boolean, Float
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 class Base(DeclarativeBase):
@@ -10,21 +10,21 @@ class Base(DeclarativeBase):
 class Category(Base):
     __tablename__ = 'category'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    category_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
 
 # Букеты
 class Bouquet(Base):
     __tablename__ = 'bouquets'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    bouquet_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[str] = mapped_column(Text)
     price: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
-    image: Mapped[str] = mapped_column(String(150))
+    image_url: Mapped[str] = mapped_column(String(150))
     category_id: Mapped[int] = mapped_column(ForeignKey('category.id', ondelete='CASCADE'), nullable=False)
-
-    category: Mapped['Category'] = relationship(backref='bouquets')
+    available: Mapped[int] = mapped_column(Boolean, default=True, nullable=False)
+    discount: Mapped[int] = mapped_column(Float, default=0)
 
 # Пользователи
 class User(Base):
@@ -40,7 +40,7 @@ class User(Base):
 class Cart(Base):
     __tablename__ = 'cart'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    cart_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
     bouquet_id: Mapped[int] = mapped_column(ForeignKey('bouquets.id', ondelete='CASCADE'), nullable=False)
     quantity: Mapped[int] = mapped_column(default=1)
@@ -52,7 +52,7 @@ class Cart(Base):
 class Promotion(Base):
     __tablename__ = 'promotions'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    promotion_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[str] = mapped_column(Text)
     discount: Mapped[float] = mapped_column(Numeric(5, 2), default=0)
@@ -61,7 +61,7 @@ class Promotion(Base):
 class Order(Base):
     __tablename__ = 'orders'
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    order_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
     total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     delivery_type: Mapped[str] = mapped_column(String(50), nullable=False)

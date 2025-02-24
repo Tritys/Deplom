@@ -87,31 +87,78 @@ async def menu(message: types.Message):
 async def show_categories(message: Message):
     await message.answer("Выберите категорию:", reply_markup=kb.category1)
     
+async def save_edited_promotion(event, data):
+    try:
+        promotion_id = data.get('promotion_id')
+        if promotion_id is None:
+            # Логируем ошибку или возвращаем сообщение об ошибке
+            logger.error("promotion_id отсутствует в данных")
+            await event.answer("Ошибка: promotion_id не найден.")
+            return
+
+        # Ваша логика обработки promotion_id
+        # Например:
+        # promotion = await get_promotion_by_id(promotion_id)
+        # if promotion:
+        #     await update_promotion(promotion, data)
+        # else:
+        #     await event.answer("Акция не найдена.")
+
+    except Exception as e:
+        logger.error(f"Ошибка в save_edited_promotion: {e}")
+        await event.answer(f"Произошла ошибка: {e}")
+    
+@router_client.callback_query(F.data.startswith("edit_promotion_"))
+async def handle_edit_promotion(callback: CallbackQuery, state: FSMContext):
+    try:
+        # Предполагаем, что данные callback имеют вид "edit_promotion_<promotion_id>"
+        promotion_id = int(callback.data.split("_")[-1])
+        if not promotion_id:
+            await callback.answer("Ошибка: promotion_id отсутствует.")
+            return
+
+        # Сохраняем promotion_id в состоянии
+        await state.update_data(promotion_id=promotion_id)
+
+        # Вызываем функцию для сохранения изменений
+        await save_edited_promotion(callback, await state.get_data())
+
+    except Exception as e:
+        await callback.answer(f"Произошла ошибка: {e}")
+    
 value2 = ['День Рождение', '8 марта', 'в корзине', 'в коробке', 
-          'Мужские', 'Свадебные', 'Спасибо', 'Извини', 'День матери', 'Монобукет', 'Траурные', 'Искусственные', 'Цветы по штучно']
+          'Мужские', 'Свадебные', 'Спасибо', 'Вместо извенений', 'День матери', 'Монобукеты', 'Траурные', 'Искусственные', 'Цветы по штучно']
 
-value1 = ['Розы', 'Тюльпаны', 'Хризантемы', 'Ромашки', 'Лилии', 'Гортензии', 'Ирисы', 'Нарцисы', 'Пионы', 'Эустома', 'Траурные', 'Составные']
+value1 = ['Розы', 'Тюльпаны', 'Хризантемы', 'Ромашки', 'Лилии', 'Гортензии', 'Ирисы', 'Нарциссы', 'Пионы', 'Эустома', 'Траурные', 'Составные']
 
-@router_client.message(F.text.in_(value2))
+@router_client.message(F.text.in_(value2 + value1))
 # Общая функция для обработки категорий
-async def handle_category1(message: types.Message):
-     async with AsyncSessionLocal () as db:  # Используем контекстный менеджер
+async def handle_category1(message: types.Message, state: FSMContext):
+     async with AsyncSessionLocal() as db:
         try:
-            category_name = message.text  # Получаем название категории из текста сообщения
+            category_name = message.text
             result = await db.execute(select(Category).filter(Category.name == category_name))
             category = result.scalars().first()
 
             if category:
-                result = await db.execute(select(Bouquet).filter(Bouquet.category_id == category.id))
+                result = await db.execute(select(Bouquet).filter(Bouquet.category_id == category.category_id))
                 bouquets = result.scalars().all()
 
                 if bouquets:
                     bouquet = bouquets[0]  # Показываем первый букет в категории
-                    await message.answer_photo(
-                        photo=bouquet.image_url,  # Если есть URL изображения
-                        caption=f"Букет: {bouquet.name}\nОписание: {bouquet.description}\nЦена: {bouquet.price} руб.",
-                        reply_markup=get_bouquet_kd(bouquet.id, category.id)
-                    )
+                    # Проверяем, есть ли изображение
+                    if bouquet.image_url:
+                        await message.answer_photo(
+                            photo=bouquet.image_url,
+                            caption=f"Букет: {bouquet.name}\nОписание: {bouquet.description}\nЦена: {bouquet.price} руб.",
+                            reply_markup=get_bouquet_kd(bouquet.bouquet_id, category.category_id)
+                        )
+                    else:
+                        # Если изображение отсутствует, отправляем текстовое сообщение
+                        await message.answer(
+                            f"Букет: {bouquet.name}\nОписание: {bouquet.description}\nЦена: {bouquet.price} руб.\n\nИзображение отсутствует.",
+                            reply_markup=get_bouquet_kd(bouquet.bouquet_id, category.category_id)
+                        )
                 else:
                     await message.answer("В этой категории пока нет букетов.")
             else:
@@ -120,13 +167,8 @@ async def handle_category1(message: types.Message):
             await message.answer(f"Произошла ошибка: {e}")
 
 # Обработка категорий из value2
-@router_client.message(F.text.in_(value2) or F.text.in_(value1))
+@router_client.message(F.text.in_(value2 + value1))
 async def handle_category_selection(message: types.Message):
-    await handle_category1(message)  # Передаем category_name
-
-# Обработка категорий из value1
-@router_client.message(F.text.in_(value1))
-async def show_bouquets_by_category2(message: types.Message):
     await handle_category1(message)  # Передаем category_name
 
 # Общая функция для обработки категорий
@@ -138,7 +180,7 @@ async def handle_category(message: types.Message):
             category = result.scalars().first()
 
             if category:
-                result = await db.execute(select(Bouquet).filter(Bouquet.category_id == category.id))
+                result = await db.execute(select(Bouquet).filter(Bouquet.category_id == category.category_id))
                 bouquets = result.scalars().all()
 
                 if bouquets:
@@ -146,7 +188,7 @@ async def handle_category(message: types.Message):
                     await message.answer_photo(
                         photo=bouquet.image_url,  # Если есть URL изображения
                         caption=f"Букет: {bouquet.name}\nОписание: {bouquet.description}\nЦена: {bouquet.price} руб.",
-                        reply_markup=get_bouquet_kd(bouquet.id, category.id)
+                        reply_markup=get_bouquet_kd(bouquet.bouquet_id, category.category_id)
                     )
                 else:
                     await message.answer("В этой категории пока нет букетов.")
@@ -158,8 +200,8 @@ async def handle_category(message: types.Message):
 
 
 # Листание букетов
-@router_client.callback_query(F.data.startswith("prev_") | F.data.startswith("next_"))
-async def navigate_bouquets(callback: CallbackQuery):
+@router_client.callback_query(F.data.startswith("prev_") or F.data.startswith("next_"))
+async def navigate_bouquets(callback: CallbackQuery, state: FSMContext):
     async with AsyncSessionLocal() as db:  # Используем асинхронный контекстный менеджер
         try:
             data = callback.data.split("_")
@@ -186,10 +228,16 @@ async def navigate_bouquets(callback: CallbackQuery):
     
 # Добавление в корзину
 @router_client.callback_query(F.data.startswith("add_"))
-async def add_to_cart(callback: CallbackQuery):
-    async with AsyncSessionLocal() as db:  # Используем асинхронный контекстный менеджер
+async def add_to_cart(callback: CallbackQuery, state: FSMContext):
+    async with AsyncSessionLocal() as db:
         try:
-            bouquet_id = int(callback.data.split("_")[1])
+            data = await state.get_data()
+            bouquet_id = data.get("bouquet_id")
+            
+            if not bouquet_id:
+                await callback.answer("Букет не выбран. Пожалуйста, выберите букет сначала.")
+                return
+
             user_id = callback.from_user.id
 
             cart_item = Cart(user_id=user_id, bouquet_id=bouquet_id)
@@ -201,12 +249,12 @@ async def add_to_cart(callback: CallbackQuery):
 
 # назад в заказать букет
 @router_client.message(F.text == "назад")
-async def show_categories(message: Message):
+async def show_categories6(message: Message):
     await message.answer("Выберите категорию:", reply_markup=kb.category1)
     
 # большие букеты
 @router_client.message(F.text == "Большие букеты")
-async def show_categories(message: Message):
+async def show_categories7(message: Message):
     await message.answer("Выберите большой букет:", reply_markup=kb.category2)
 
 # Профиль
@@ -237,7 +285,7 @@ async def show_profile(message: types.Message):
             )
 # Акции
 @router_client.message(F.text == "Акции")
-async def show_categories(message: Message):
+async def show_categories1(message: Message):
     db = AsyncSessionLocal ()
     categories = db.execute(Category).all()
     await message.answer("Выберите категорию:", reply_markup=kb.category)
@@ -245,12 +293,12 @@ async def show_categories(message: Message):
 
 # Адрес магазина
 @router_client.message(F.text == "Адрес магазина")
-async def show_categories(message: Message):
+async def show_categories2(message: Message):
     await message.answer('Наш магазин находится по адрессу ...\nРаботает каждый день с 9:00 до 18:00 \nНомер телефона для связи с администратором цветочного магазина 87369874326', reply_markup=kb.shop_address)
 
 # О магазине
 @router_client.message(F.text == "О магазине ℹ️")
-async def show_categories(message: Message):
+async def show_categories3(message: Message):
     await message.answer('Всю интересующую вас информацию можно узнать из документа приведённого ниже\nА также на нашем сайте: ', reply_markup=kb.shop)
 
 #Корзина
@@ -327,23 +375,28 @@ async def choose_payment(message: Message, state: FSMContext):
     db.close()
 
 @router_client.message(F.text == "Связь с администратором")
-async def show_categories(message: Message):
+async def communication_with_administrator(message: Message):
     await message.answer("Выбирете способ связи с администратором", reply_markup=kb.admin_contact)
 
 @router_client.message(F.text == "Позвонить")
-async def show_categories(message: Message):
-    await message.answer("Выбирете способ связи с администратором", reply_markup=kb.admin_contact)
+async def call(message: Message):
+    await message.answer("Вы можете связаться с администратором позвонив на номер +723569227455", reply_markup=kb.contact_as)
     
 @router_client.message(F.text == "В чате")
-async def show_categories(message: Message):
-    await message.answer("Выбирете способ связи с администратором", reply_markup=kb.admin_contact)
+async def In_chat(message: Message):
+    await message.answer("Напишите вашу притензию @Sertaw", reply_markup=kb.contact_as)
 
 # Сайт
 @router_client.message(F.text == "Сайт")
-async def show_categories(message: Message):
+async def Web_site(message: Message):
     await message.answer("Нажмите на ссылку ниже чтобы перейти на наш сайт", reply_markup=Website())
 
 # YouTube
 @router_client.message(F.text == "YouTube")
-async def show_categories(message: Message):
+async def You_Tube(message: Message):
     await message.answer("Нажмите на ссылку ниже чтобы перейти на наш YouTube канал", reply_markup=You_tube())
+    
+    
+@router_client.message()
+async def unknown_message(message: types.Message):
+    await message.answer("Я тебя не понимаю. Попробуй выбрать команду из меню.")
