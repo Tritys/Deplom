@@ -6,9 +6,15 @@ keyboard = InlineKeyboardBuilder()
 # Меню
 main = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='Профиль' ), KeyboardButton(text='Корзина' )],
-    [KeyboardButton(text='Адрес магазина'), KeyboardButton(text='Заказать букет' )],
-    [KeyboardButton(text='Сайт'), KeyboardButton(text='YouTube' )]
+    [KeyboardButton(text='📍 Адрес магазина'), KeyboardButton(text='Заказать букет' )],
+    [KeyboardButton(text='Сайт'), KeyboardButton(text='YouTube' )],
+    [KeyboardButton(text='❓ Помощь'), KeyboardButton(text='📞 Контакты')]
 ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
+#     [KeyboardButton(text='🛍 Каталог'), KeyboardButton(text='🛒 Корзина')],
+#     [KeyboardButton(text='👤 Профиль'), KeyboardButton(text='🎁 Акции')],
+#     [KeyboardButton(text='📍 Магазины'), KeyboardButton(text='📞 Контакты')],
+#     [KeyboardButton(text='ℹ️ О нас'), KeyboardButton(text='❓ Помощь')]
+# ], resize_keyboard=True, input_field_placeholder='Выберите раздел')
 
 # Профиль
 profile = ReplyKeyboardMarkup(keyboard=[
@@ -58,47 +64,41 @@ def get_bouquet_kd(bouquet_id, category_id):
         inline_keyboard=[
                 [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"prev_{bouquet_id}_{category_id}"), InlineKeyboardButton(text="Далее ➡️", callback_data=f'next_{bouquet_id}_{category_id}')],
                 [InlineKeyboardButton(text="Добавить в корзину", callback_data=f"add_{bouquet_id}")],
-                [InlineKeyboardButton(text="Меню", callback_data='menu_'), InlineKeyboardButton(text="Список категорий", callback_data='category')],
+                # [InlineKeyboardButton(text="Меню", callback_data='menu_'), InlineKeyboardButton(text="Список категорий", callback_data='category')],
         ]
     )
  
 # Клавиатура для выбора доставки
-delivery_keyboard = ReplyKeyboardMarkup(keyboard=[
-        [KeyboardButton(text="Доставка")],
-        [KeyboardButton(text="Самовывоз")],
-    ],
-    resize_keyboard=True
-)
+def get_delivery_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Доставка", callback_data="delivery_delivery")
+    builder.button(text="Самовывоз", callback_data="delivery_pickup")
+    builder.adjust(1)
+    return builder.as_markup()
 
 # Клавиатура для выбора оплаты
-payment_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Наличные")],
-        [KeyboardButton(text="Карта")],
-        [KeyboardButton(text="Перевод")],
-    ], resize_keyboard=True, input_field_placeholder='Нажмите кнопку ниже.')
-
-
-
+def get_payment_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Наличные", callback_data="payment_cash")
+    builder.button(text="Карта", callback_data="payment_card")
+    builder.button(text="Перевод", callback_data="payment_transfer")
+    builder.adjust(1)
+    return builder.as_markup()
 
 # Корзина
 def get_cart_keyboard(cart_items):
     builder = InlineKeyboardBuilder()
     
     for item in cart_items:
-        # Кнопки для управления количеством
+        builder.button(text=f"❌ {item.bouquet.name}", callback_data=f"remove_{item.bouquet_id}")
         builder.button(text=f"➖", callback_data=f"decrease_{item.bouquet_id}")
         builder.button(text=f"{item.quantity}", callback_data=f"quantity_{item.bouquet_id}")
         builder.button(text=f"➕", callback_data=f"increase_{item.bouquet_id}")
-        # Кнопка для удаления букета
-        builder.button(text=f"❌ Удалить", callback_data=f"remove_{item.bouquet_id}")
     
-    # Кнопка для оформления заказа
     builder.button(text="Оформить заказ", callback_data="checkout")
-    
-    # Группируем кнопки: 3 кнопки на строку (управление количеством и удаление)
-    builder.adjust(3, 1)  # 3 кнопки в первой строке, 1 кнопка на второй строке
+    builder.adjust(4, 1)  # Группируем кнопки по 4 в строке, а кнопку "Оформить заказ" на новой строке
     return builder.as_markup()
+
 # Адрес магазина
 shop_address = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='О магазине ℹ️' ), KeyboardButton(text='Заказать букет' )],  
@@ -135,5 +135,28 @@ def Website():
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text='Сайт', url="https://www.youtube.com/")]])
-    
-    
+
+help_keyboard = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='❓ Часто задаваемые вопросы')],
+    [KeyboardButton(text='📦 Доставка'), KeyboardButton(text='💳 Оплата')],
+    [KeyboardButton(text='📞 Поддержка'), KeyboardButton(text='📝 Условия')],
+    [KeyboardButton(text='Меню')]
+], resize_keyboard=True, input_field_placeholder='Выберите раздел помощи')
+
+# Акции
+promotions = ReplyKeyboardMarkup(keyboard=[
+    [KeyboardButton(text='🎁 Активные акции'), KeyboardButton(text='💰 Скидки')],
+    [KeyboardButton(text='🎉 Специальные предложения'), KeyboardButton(text='🎂 Акции к празднику')],
+    [KeyboardButton(text='Меню')]
+], resize_keyboard=True, input_field_placeholder='Выберите раздел акций')
+
+# Контакты
+contacts = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text='📞 Позвонить'), KeyboardButton(text='✉️ Написать')],
+        [KeyboardButton(text='📱 WhatsApp'), KeyboardButton(text='📱 Telegram')],
+        [KeyboardButton(text='Меню')]
+    ],
+    resize_keyboard=True,
+    input_field_placeholder='Выберите способ связи'
+)

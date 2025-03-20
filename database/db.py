@@ -1,9 +1,12 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, select, Boolean
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, select, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import func
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 import logging
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import joinedload
 
 DATABASE_URL = "sqlite+aiosqlite:///./flower_shop.db"
 
@@ -18,7 +21,6 @@ logger = logging.getLogger(__name__)
 # Модели
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, autoincrement=True)
     user_id = Column(Integer, primary_key=True)
     first_name = Column(String)
     username = Column(String)
@@ -27,13 +29,13 @@ class User(Base):
 class Category(Base):
     __tablename__ = "categorys"
     category_id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String)
+    name = Column(String, index=True)
 
-class Bouquet(Base):
+class Bouquet(AsyncAttrs, Base):
     __tablename__ = "bouquets"
     bouquet_id = Column(Integer, primary_key=True, autoincrement=True)
-    category_id = Column(Integer, ForeignKey("categorys.category_id"))
-    name = Column(String)
+    category_id = Column(Integer, ForeignKey("categorys.category_id", ondelete="CASCADE"), index=True)
+    name = Column(String, index=True)
     price = Column(Float)
     description = Column(String)
     image_url = Column(String)
@@ -41,7 +43,8 @@ class Bouquet(Base):
     available = Column(Boolean, default=True)
     
     # Определяем связь с моделью Cart
-    carts = relationship("Cart", back_populates="bouquet")
+    carts = relationship("Cart", back_populates="bouquet", cascade="all, delete-orphan")
+    
 
 class Promotion(Base):
     __tablename__ = "promotions"
@@ -54,10 +57,10 @@ class Promotion(Base):
     end_date = Column(String)
 
 class Cart(Base):
-    __tablename__ = "cart"
+    __tablename__ = "carts"
     cart_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"))
-    bouquet_id = Column(Integer, ForeignKey("bouquets.bouquet_id"))
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), index=True)
+    bouquet_id = Column(Integer, ForeignKey("bouquets.bouquet_id", ondelete="CASCADE"), index=True)
     quantity = Column(Integer)
     
     # Определяем связь с моделью Bouquet
@@ -66,10 +69,27 @@ class Cart(Base):
 class Order(Base):
     __tablename__ = "orders"
     order_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"))
+    user_id = Column(Integer, ForeignKey("users.user_id", ondelete="CASCADE"), index=True)
     total_price = Column(Float)
     delivery_type = Column(String)
-    status = Column(String, default="pending")
+    payment_method = Column(String)  # Новый столбец
+    status = Column(String, default="pending", index=True)
+    created_at = Column(DateTime, default=func.now())  # Дата создания заказа
+
+    # Связь с таблицей order_items (если нужно хранить товары в заказе)
+    items = relationship("OrderItem", back_populates="order")
+    
+class OrderItem(Base):
+    __tablename__ = "order_items"
+    order_item_id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(Integer, ForeignKey("orders.order_id", ondelete="CASCADE"), index=True)
+    bouquet_id = Column(Integer, ForeignKey("bouquets.bouquet_id", ondelete="CASCADE"), index=True)
+    quantity = Column(Integer)
+    price = Column(Float)  # Цена на момент заказа
+
+    # Связи
+    order = relationship("Order", back_populates="items")
+    bouquet = relationship("Bouquet")
 
 # Пересоздание таблиц
 # Base.metadata.drop_all(bind=engine)  # Удаление всех таблиц
@@ -91,11 +111,16 @@ async def get_db():
             await db.close()
 
 async def add_user(db: AsyncSession, id: int, user_id: int, first_name: str, username: str, phone: str = None):
-    new_user = User(id=id, user_id=user_id, first_name=first_name, username=username, phone=phone)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    try:
+        new_user = User(user_id=user_id, first_name=first_name, username=username, phone=phone)
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+        return new_user
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Ошибка при добавлении пользователя: {e}")
+        raise
 
 
 async def get_user(db: AsyncSession, user_id: int):
@@ -112,20 +137,32 @@ async def get_bouquets_by_category(db: AsyncSession, category_id: int):
     return result.scalars().all()
 
 async def add_to_cart(db: AsyncSession, user_id: int, bouquet_id: int, quantity: int = 1):
-    new_cart_item = Cart(user_id=user_id, bouquet_id=bouquet_id, quantity=quantity)
-    db.add(new_cart_item)
-    db.commit()
-    db.refresh(new_cart_item)
-    return new_cart_item
+    try:
+        new_cart_item = Cart(user_id=user_id, bouquet_id=bouquet_id, quantity=quantity)
+        db.add(new_cart_item)
+        await db.commit()
+        await db.refresh(new_cart_item)
+        logger.info(f"Добавлен элемент в корзину: {new_cart_item}")
+        return new_cart_item
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Ошибка при добавлении в корзину: {e}")
+        raise
 
 async def get_cart(db: AsyncSession, user_id):
+    logger.info(f"Запрос корзины для пользователя {user_id}")
     result = await db.execute(select(Cart).filter(Cart.user_id == user_id))
-    return result.scalars().all()
+    items = result.scalars().all()
+    logger.info(f"Найдено элементов в корзине: {len(items)}")
+    return items
 
 async def clear_cart(db: AsyncSession, user_id):
-    await db.execute(Cart.__table__.delete().where(Cart.user_id == user_id))
-    await db.commit()
-
+    result = await db.execute(
+        select(Cart, Bouquet)
+        .join(Bouquet, Cart.bouquet_id == Bouquet.bouquet_id)
+        .filter(Cart.user_id == user_id)
+    )
+    return result.all()
 async def get_promotions(db: AsyncSession):
     result = await db.execute(select(Promotion))
     return result.scalars().all()
@@ -133,22 +170,27 @@ async def get_promotions(db: AsyncSession):
 async def create_order(db: AsyncSession, user_id: int, total_price: float, delivery_type: str):
     new_order = Order(user_id=user_id, total_price=total_price, delivery_type=delivery_type)
     db.add(new_order)
-    db.commit()
-    db.refresh(new_order)
+    await  db.commit()
+    await  db.refresh(new_order)
     return new_order
 
+# Функция для получения заказов с загруженными товарами
 async def get_admin_orders(db: AsyncSession):
-    result = await db.execute(select(Order).filter(Order.status == "pending"))
+    result = await db.execute(
+        select(Order)
+        .options(joinedload(Order.items).joinedload(OrderItem.bouquet))  # Загружаем связанные данные
+    )
     return result.scalars().all()
 
-async def update_order_status(db: AsyncSession, order_id, status):
-    order = await db.execute(select(Order).filter(Order.order_id == order_id))
+async def update_order_status(db: AsyncSession, order_id: int, status: str):
+    order = await db.execute(select(Order).where(Order.order_id == order_id))
     order = order.scalars().first()
     if order:
         order.status = status
-        db.commit()
-        db.refresh(order)
-    return order
+        await db.commit()
+        await db.refresh(order)
+        return order
+    return None
 
 
 
