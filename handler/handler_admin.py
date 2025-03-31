@@ -38,6 +38,7 @@ class IsAdminFilter(Filter):
 
 # Состояния для FSM
 class AdminStates(StatesGroup):
+    
     AddBouquetID = State()
     AddBouquetName  = State()
     AddBouquetCategory = State()
@@ -103,7 +104,7 @@ async def show_profile(message: types.Message):
             await message.answer("Профиль не найден. Пожалуйста, пройдите регистрацию, используя команду /start")
 
 @router_admin.message(F.text == '💐 Букеты')
-async def add_bouquet_start(message: types.Message, state: FSMContext):
+async def add_bouquet(message: types.Message, state: FSMContext):
     await state.clear()  # Очищаем состояние
     await message.answer("Добавление, изменение и удаление букетов:", reply_markup=admin_bouquets_kb())
 
@@ -113,34 +114,39 @@ async def add_bouquet_start(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()  # Очищаем состояние
     await callback.message.answer("Введите ID букета:")
     await state.set_state(AdminStates.AddBouquetID)
+    
+# Команда для добавления нового букета
+@router_admin.callback_query(F.data == "add_bouquet")
+async def add_bouquet_start(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()  # Очищаем состояние
+    await callback.message.answer("Введите ID букета:")
+    await state.set_state(AdminStates.AddBouquetID)
 
-# Обработчик для ввода ID букета
+# Обработчик для ввода ID букета при добавлении
 @router_admin.message(StateFilter(AdminStates.AddBouquetID))
 async def add_bouquet_id(message: types.Message, state: FSMContext):
     try:
-        bouquet_id = int(message.text)
-        logger.info(f"Пользователь ввёл ID: {bouquet_id}")
-        async with AsyncSessionLocal() as db:
-            existing_bouquet = await db.execute(select(Bouquet).where(Bouquet.bouquet_id == bouquet_id))
-            existing_bouquet = existing_bouquet.scalars().first()
-            
-            if existing_bouquet:
-                logger.warning(f"Букет с ID {bouquet_id} уже существует.")
-                await message.answer("Букет с таким ID уже существует. Попробуйте снова.")
-                return
-
-        await state.update_data(bouquet_id=bouquet_id)
-        await message.answer("Введите название букета:")
-        await state.set_state(AdminStates.AddBouquetName)
+        bouquet_id = int(message.text)  # Прямое преобразование с обработкой ошибок
     except ValueError:
-        logger.error(f"Ошибка при вводе ID: {message.text}")
-        await message.answer("ID должен быть числом. Попробуйте снова.")  
-        
+        await message.answer("❌ Ошибка: ID должен быть целым числом. Пример: 123")
+        return
+
+    # Проверка существования ID
+    async with AsyncSessionLocal() as db:
+        existing_bouquet = await db.execute(select(Bouquet).where(Bouquet.bouquet_id == bouquet_id))
+        if existing_bouquet.scalars().first():
+            await message.answer("⚠️ Букет с таким ID уже существует.")
+            return
+
+    await state.update_data(bouquet_id=bouquet_id)
+    await message.answer("Введите название букета:")
+    await state.set_state(AdminStates.AddBouquetName)
+
 # Обработчик для ввода названия букета
 @router_admin.message(StateFilter(AdminStates.AddBouquetName))
 async def add_bouquet_name(message: types.Message, state: FSMContext):
     await state.update_data(name=message.text)
-    
+
     # Получаем клавиатуру с категориями
     keyboard = await get_categories_keyboard()
     if not keyboard:
@@ -172,7 +178,7 @@ async def add_bouquet_price(message: types.Message, state: FSMContext):
     except ValueError:
         logger.error(f"Ошибка при вводе цены: {message.text}")
         await message.answer("Цена должна быть числом. Попробуйте снова или введите /cancel для отмены.")
-    
+
 @router_admin.message(StateFilter(AdminStates.AddBouquetDescription))
 async def add_bouquet_description(message: types.Message, state: FSMContext):
     await state.update_data(description=message.text)
@@ -201,7 +207,7 @@ async def add_bouquet_image_url(message: types.Message, state: FSMContext):
 
     await message.answer("Букет успешно добавлен!")
     await state.set_state(None)
-    
+
 @router_admin.message(Command("cancel"))
 async def cancel_operation(message: types.Message, state: FSMContext):
     # Очищаем состояние
@@ -324,7 +330,7 @@ async def delete_bouquet_id(message: types.Message, state: FSMContext):
         await message.answer("ID должен быть числом. Попробуйте снова.")
 
 @router_admin.message(F.text == '🎉 Акции')
-async def add_promotion_start1(message: types.Message, state: FSMContext):
+async def add_promotion(message: types.Message, state: FSMContext):
     await state.clear()  # Очищаем состояние
     await message.answer("Добавление, изменение и удаление акций:", reply_markup=admin_promotions_kb())
     

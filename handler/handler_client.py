@@ -932,7 +932,7 @@ async def You_Tube(message: types.Message, state: FSMContext):
 <b>Если у вас есть вопросы, свяжитесь с нами!</b>
     """
     await message.answer(delivery_text, reply_markup=kb.menu, parse_mode="HTML")
-    
+
 # Оплата
 @router_client.message(F.text == "💳 Оплата")
 async def You_Tube(message: types.Message, state: FSMContext):
@@ -946,7 +946,7 @@ async def You_Tube(message: types.Message, state: FSMContext):
 <b>Если у вас возникли проблемы с оплатой, свяжитесь с нами!</b>
     """
     await message.answer(payment_text, reply_markup=kb.menu, parse_mode="HTML")
-    
+
 # Поддержка
 @router_client.message(F.text == "📞 Поддержка")
 async def You_Tube(message: types.Message, state: FSMContext):

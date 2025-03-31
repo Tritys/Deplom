@@ -17,7 +17,6 @@ Base = declarative_base()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 # Модели
 class User(Base):
     __tablename__ = "users"
@@ -44,7 +43,6 @@ class Bouquet(AsyncAttrs, Base):
     
     # Определяем связь с моделью Cart
     carts = relationship("Cart", back_populates="bouquet", cascade="all, delete-orphan")
-    
 
 class Promotion(Base):
     __tablename__ = "promotions"
@@ -78,7 +76,7 @@ class Order(Base):
 
     # Связь с таблицей order_items (если нужно хранить товары в заказе)
     items = relationship("OrderItem", back_populates="order")
-    
+
 class OrderItem(Base):
     __tablename__ = "order_items"
     order_item_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -91,9 +89,6 @@ class OrderItem(Base):
     order = relationship("Order", back_populates="items")
     bouquet = relationship("Bouquet")
 
-# Пересоздание таблиц
-# Base.metadata.drop_all(bind=engine)  # Удаление всех таблиц
-# Base.metadata.create_all(bind=engine)  # Создание таблиц заново
 async def create_tables():
     try:
         async with engine.begin() as conn:
@@ -101,7 +96,7 @@ async def create_tables():
         logger.info("Таблицы созданы успешно!")
     except Exception as e:
         logger.error(f"Ошибка при создании таблиц: {e}")
-        
+
 # Функции для работы с базой данных
 async def get_db():
     async with AsyncSessionLocal() as db:
@@ -122,11 +117,9 @@ async def add_user(db: AsyncSession, id: int, user_id: int, first_name: str, use
         logger.error(f"Ошибка при добавлении пользователя: {e}")
         raise
 
-
 async def get_user(db: AsyncSession, user_id: int):
     result = await db.execute(select(User).filter(User.user_id == user_id))
     return result.scalars().first()
-
 
 async def get_categories(db: AsyncSession):
     result = await db.execute(select(Category))

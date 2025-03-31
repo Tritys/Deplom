@@ -24,20 +24,20 @@ def admin_bouquets_kb():
         [InlineKeyboardButton(text="➕ Добавить букет", callback_data="add_bouquet")],
         [InlineKeyboardButton(text="✏️ Изменить букет", callback_data="edit_bouquet")],
         [InlineKeyboardButton(text="❌ Удалить букет", callback_data="delete_bouquet")],
-        [InlineKeyboardButton(text="Отмена", callback_data="cancel")],
+        # [InlineKeyboardButton(text="Отмена", callback_data="cancel")],
         # [InlineKeyboardButton(text="🏷️ Управление категориями", callback_data="manage_categories")],
         # [InlineKeyboardButton(text="🔄 Обновить наличие", callback_data="update_availability")],
         # [InlineKeyboardButton(text="📋 Список букетов", callback_data="list_bouquets")],
         # [InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_admin_menu")]
     ])
-    
+
 def admin_promotions_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить акцию", callback_data="add_promotion")],
         [InlineKeyboardButton(text="✏️ Изменить акцию", callback_data="edit_promotion")],
         [InlineKeyboardButton(text="❌ Удалить акцию", callback_data="delete_promotion")],
         [InlineKeyboardButton(text="📅 Активные акции", callback_data="active_promotions")],
-        [InlineKeyboardButton(text="Отмена", callback_data="cancel")],
+        # [InlineKeyboardButton(text="Отмена", callback_data="cancel")],
         # [InlineKeyboardButton(text="📊 Статистика акций", callback_data="promotion_stats")],
         # [InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_admin_menu")]
     ])
@@ -49,7 +49,6 @@ profile_admin = ReplyKeyboardMarkup(keyboard=[
     # [KeyboardButton(text='🔙 Главное меню')]
 ], resize_keyboard=True, input_field_placeholder='Выберите действие')
 
-    
 # Функция для получения клавиатуры с категориями
 async def get_categories_keyboard():
     async with AsyncSessionLocal() as db:
@@ -67,8 +66,7 @@ async def get_categories_keyboard():
             ))
         builder.adjust(2)  # Группируем кнопки по 2 в строке
         return builder.as_markup()
-    
-    
+
 def get_orders_menu_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [

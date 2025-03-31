@@ -16,7 +16,6 @@ from handler.handler_client import router_client
 from handler.handler_admin import router_admin
 
 # Загрузка переменных окружения
-
 load_dotenv(find_dotenv())
 
 # Логирование
@@ -58,7 +57,6 @@ async def notify_admin(message: str):
     except Exception as e:
         logger.error(f"Ошибка при отправке сообщения администратору: {e}")
 
-
 async def main():
     try:
         await create_tables()
@@ -74,18 +72,17 @@ async def main():
         await on_shutdown()
         sys.exit(1)
 
-
 async def on_shutdown():
     try:
         shutdown_time = datetime.now()
         uptime = shutdown_time - start_time
         logger.info(f"Бот выключен в {shutdown_time.strftime('%Y-%m-%d %H:%M:%S')}")
         logger.info(f"Время работы бота: {uptime}")
-        
+
         # Уведомление администратора о выключении бота
         await notify_admin(f"🛑 Бот выключен в {shutdown_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
                           f"⏱ Время работы бота: {uptime}")
-        
+
         await bot.session.close()
     except Exception as e:
         logger.error(f"Ошибка при выключении бота: {e}")
