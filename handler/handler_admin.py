@@ -114,13 +114,6 @@ async def add_bouquet_start(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()  # Очищаем состояние
     await callback.message.answer("Введите ID букета:")
     await state.set_state(AdminStates.AddBouquetID)
-    
-# Команда для добавления нового букета
-@router_admin.callback_query(F.data == "add_bouquet")
-async def add_bouquet_start(callback: types.CallbackQuery, state: FSMContext):
-    await state.clear()  # Очищаем состояние
-    await callback.message.answer("Введите ID букета:")
-    await state.set_state(AdminStates.AddBouquetID)
 
 # Обработчик для ввода ID букета при добавлении
 @router_admin.message(StateFilter(AdminStates.AddBouquetID))
