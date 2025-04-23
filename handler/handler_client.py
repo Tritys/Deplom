@@ -115,7 +115,7 @@ async def menu(message: types.Message):
     await message.answer(f"Приветствуем вас в нашем магазине", reply_markup=kb.main)
 
 # Заказать букет
-@router_client.message(F.text == "Заказать букет" or F.data.startswith("category"))
+@router_client.message(F.text == "Заказать букет" or F.data.startswith("categorys"))
 async def show_categories(message: Message):
     await message.answer("Выберите категорию:", reply_markup=kb.category1)
     
@@ -158,8 +158,8 @@ async def handle_edit_promotion(callback: CallbackQuery, state: FSMContext):
     except Exception as e:
         await callback.answer(f"Произошла ошибка: {e}")
     
-value2 = ['День Рождение', '8 марта', 'в корзине', 'в коробке', 
-          'Мужские', 'Свадебные', 'Спасибо', 'Вместо извенений', 'День матери', 'Монобукеты', 'Траурные', 'Искусственные', 'Цветы по штучно']
+value2 = ['День Рождения', '8 марта', 'в корзине', 'в коробке', 
+          'Мужские', 'Свадебные', 'Спасибо', 'Вместо извинений', 'День матери', 'Монобукеты', 'Траурные', 'Искусственные']
 
 value1 = ['Розы', 'Тюльпаны', 'Хризантемы', 'Ромашки', 'Лилии', 'Гортензии', 'Ирисы', 'Нарциссы', 'Пионы', 'Эустома', 'Траурные', 'Составные']
 
@@ -642,7 +642,7 @@ async def remove_from_cart(callback: CallbackQuery, state: FSMContext):
             await db.commit()
 
             # Получаем обновленный текст корзины и клавиатуру
-            cart_text, cart_keyboard = await show_cart(user_id, db)
+            cart_text, cart_keyboard = await get_cart_data(user_id, db)  # Используем get_cart_data вместо show_cart
 
             if cart_text and cart_keyboard:
                 # Редактируем существующее сообщение
@@ -652,7 +652,8 @@ async def remove_from_cart(callback: CallbackQuery, state: FSMContext):
                     parse_mode="HTML"
                 )
             else:
-                await callback.answer("Ваша корзина пуста.")
+                # Если корзина пуста, отправляем новое сообщение
+                await callback.message.edit_text("Ваша корзина пуста.")
         except Exception as e:
             await callback.answer(f"Произошла ошибка: {e}")
 
@@ -661,10 +662,17 @@ async def remove_from_cart(callback: CallbackQuery, state: FSMContext):
 async def choose_delivery(callback: CallbackQuery, state: FSMContext):
     # Получаем тип доставки из callback-данных
     delivery_type = callback.data.split("_")[1]  # delivery или pickup
-    await state.update_data(delivery_type=delivery_type)
+    
+    # Переводим на русский
+    delivery_type_russian = {
+        "delivery": "Доставка",
+        "pickup": "Самовывоз"
+    }.get(delivery_type, delivery_type)
+    
+    await state.update_data(delivery_type=delivery_type, delivery_type_russian=delivery_type_russian)
 
     # Уведомляем пользователя о выборе
-    await callback.answer(f"Вы выбрали: {delivery_type}")
+    await callback.answer(f"Вы выбрали: {delivery_type_russian}")
 
     # Переходим к выбору оплаты
     await callback.message.answer("Выберите способ оплаты:", reply_markup=get_payment_keyboard())
@@ -696,12 +704,22 @@ async def choose_delivery(callback: CallbackQuery, state: FSMContext):
 @router_client.callback_query(F.data.startswith("payment_"), OrderState.choosing_payment)
 async def choose_payment(callback: CallbackQuery, state: FSMContext, bot: Bot):
     payment_method = callback.data.split("_")[1]  # cash, card или transfer
-    await state.update_data(payment_method=payment_method)
+    
+    # Переводим на русский
+    payment_method_russian = {
+        "cash": "Наличные",
+        "card": "Карта",
+        "transfer": "Перевод"
+    }.get(payment_method, payment_method)
+    
+    await state.update_data(payment_method=payment_method, payment_method_russian=payment_method_russian)
 
-    # Получаем данные из состояния
+    # Получаем ВСЕ данные из состояния
     data = await state.get_data()
     cart_items = data["cart_items"]
-    delivery_type = data["delivery_type"]
+    delivery_type = data["delivery_type"]  # Получаем оригинальное значение доставки
+    delivery_type_russian = data["delivery_type_russian"]
+    payment_method = data["payment_method"]  # Получаем оригинальное значение оплаты
 
     # Рассчитываем общую стоимость
     total_price = sum(
@@ -721,8 +739,8 @@ async def choose_payment(callback: CallbackQuery, state: FSMContext, bot: Bot):
             order_text += f"{hbold('Букет удален')} (ID: {item.bouquet_id})\n"
 
     order_text += hunderline(f"Итого: {total_price} руб.")
-    order_text += f"\nСпособ доставки: {delivery_type}"
-    order_text += f"\nСпособ оплаты: {payment_method}"
+    order_text += f"\nСпособ доставки: {delivery_type_russian}"
+    order_text += f"\nСпособ оплаты: {payment_method_russian}"
 
     # Отправляем пользователю подтверждение заказа
     await callback.message.answer(
@@ -733,13 +751,13 @@ async def choose_payment(callback: CallbackQuery, state: FSMContext, bot: Bot):
     # Сохраняем заказ в базу данных
     async with AsyncSessionLocal() as db:
         try:
-            # Создаем новый заказ
+            # Создаем новый заказ (используем оригинальные значения из state)
             new_order = Order(
                 user_id=callback.from_user.id,
                 total_price=total_price,
-                delivery_type=delivery_type,
-                payment_method=payment_method,
-                status="pending"  # Статус по умолчанию
+                delivery_type=delivery_type,  # Используем значение из state
+                payment_method=payment_method,  # Используем значение из state
+                status="Принят"  # Статус по умолчанию
             )
             db.add(new_order)
             await db.commit()
@@ -748,7 +766,7 @@ async def choose_payment(callback: CallbackQuery, state: FSMContext, bot: Bot):
             await db.refresh(new_order)
             order_id = new_order.order_id
 
-            # Сохраняем товары в заказе (если нужно)
+            # Сохраняем товары в заказе
             for item in cart_items:
                 if item.bouquet:
                     order_item = OrderItem(
@@ -785,7 +803,7 @@ async def choose_payment(callback: CallbackQuery, state: FSMContext, bot: Bot):
 
 @router_client.message(F.text == "Связь с администратором")
 async def communication_with_administrator(message: Message):
-    await message.answer("Выбирете способ связи с администратором", reply_markup=kb.admin_contact)
+    await message.answer("Выберите способ связи с администратором", reply_markup=kb.admin_contact)
 
 @router_client.message(F.text == "Позвонить")
 async def call(message: types.Message, state: FSMContext):
@@ -793,7 +811,7 @@ async def call(message: types.Message, state: FSMContext):
 
 @router_client.message(F.text == "В чате")
 async def In_chat(message: types.Message, state: FSMContext):
-    await message.answer("Напишите вашу притензию @Sertaw", reply_markup=kb.contact_as)
+    await message.answer("Напишите вашу претензию @Sertaw", reply_markup=kb.contact_as)
 
 # Сайт
 @router_client.message(F.text == "Сайт")

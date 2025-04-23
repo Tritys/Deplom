@@ -7,6 +7,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import joinedload
+import random
 
 DATABASE_URL = "sqlite+aiosqlite:///./flower_shop.db"
 
@@ -24,6 +25,7 @@ class User(Base):
     first_name = Column(String)
     username = Column(String)
     phone = Column(String)
+    is_active = Column(Boolean, default=True)
 
 class Category(Base):
     __tablename__ = "categorys"
@@ -32,6 +34,17 @@ class Category(Base):
 
 class Bouquet(AsyncAttrs, Base):
     __tablename__ = "bouquets"
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Генерируем случайный ID при создании экземпляра
+        self.bouquet_id = self.generate_random_id()
+    
+    @staticmethod
+    def generate_random_id():
+        """Генерация случайного 8-значного ID"""
+        return random.randint(10000000, 99999999)
+    
     bouquet_id = Column(Integer, primary_key=True, autoincrement=True)
     category_id = Column(Integer, ForeignKey("categorys.category_id", ondelete="CASCADE"), index=True)
     name = Column(String, index=True)

@@ -10,11 +10,8 @@ from aiogram.client.default import DefaultBotProperties
 import sys
 from database.db import create_tables
 from dotenv import find_dotenv, load_dotenv, dotenv_values
-
-# Импортируем роутеры
 from handler.handler_client import router_client
 from handler.handler_admin import router_admin
-
 # Загрузка переменных окружения
 load_dotenv(find_dotenv())
 

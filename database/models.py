@@ -34,7 +34,8 @@ class User(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, unique=True, primary_key=True)
     first_name: Mapped[str] = mapped_column(String(150), nullable=True)
     username: Mapped[str] = mapped_column(String(150), nullable=True)
-    phone: Mapped[str] = mapped_column(String(13), nullable=True)
+    phone: Mapped[int] = mapped_column(String(13), nullable=True)
+    is_active: Mapped[str] = mapped_column(Boolean, default=True)
 
 # Корзина
 class Cart(Base):

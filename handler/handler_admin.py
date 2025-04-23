@@ -39,13 +39,6 @@ class IsAdminFilter(Filter):
 # Состояния для FSM
 class AdminStates(StatesGroup):
     
-    AddBouquetID = State()
-    AddBouquetName  = State()
-    AddBouquetCategory = State()
-    AddBouquetPrice  = State()
-    AddBouquetDescription  = State()
-    AddBouquetImageURL  = State()
-    
     EditBouquetID = State()
     EditBouquetName = State()
     EditBouquetPrice = State()
@@ -53,12 +46,6 @@ class AdminStates(StatesGroup):
     EditBouquetImageURL = State()
     
     DeleteBouquet = State()
-    
-    AddPromotionTitle = State()
-    AddPromotionDescription = State()
-    AddPromotionDiscount = State()
-    AddPromotionStartDate = State()
-    AddPromotionEndDate = State()
     
     EditPromotionID = State()
     EditPromotionTitle = State()
@@ -102,104 +89,117 @@ async def show_profile(message: types.Message):
             )
         else:
             await message.answer("Профиль не найден. Пожалуйста, пройдите регистрацию, используя команду /start")
-
+ 
+ 
+ # пример функции get_categories_keyboard
+async def get_categories_keyboard():
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Category))
+        categories = result.scalars().all()
+    
+    keyboard = InlineKeyboardBuilder()
+    for category in categories:
+        keyboard.button(
+            text=category.name,
+            callback_data=f"category_{category.category_id}"  # строгое соответствие
+        )
+    return keyboard.as_markup()
+ 
 @router_admin.message(F.text == '💐 Букеты')
 async def add_bouquet(message: types.Message, state: FSMContext):
     await state.clear()  # Очищаем состояние
     await message.answer("Добавление, изменение и удаление букетов:", reply_markup=admin_bouquets_kb())
 
-# Команда для добавления нового букета
-@router_admin.callback_query(F.data == "add_bouquet")
-async def add_bouquet_start(callback: types.CallbackQuery, state: FSMContext):
-    await state.clear()  # Очищаем состояние
-    await callback.message.answer("Введите ID букета:")
-    await state.set_state(AdminStates.AddBouquetID)
+# # Команда для добавления нового букета
+# @router_admin.callback_query(F.data == "add_bouquet")
+# async def add_bouquet_start(callback: types.CallbackQuery, state: FSMContext):
+#     await state.clear()  # Очищаем состояние
+#     await callback.message.answer("Введите название букета:")
+#     await state.set_state(AdminStates.AddBouquetName)
 
-# Обработчик для ввода ID букета при добавлении
-@router_admin.message(StateFilter(AdminStates.AddBouquetID))
-async def add_bouquet_id(message: types.Message, state: FSMContext):
-    try:
-        bouquet_id = int(message.text)  # Прямое преобразование с обработкой ошибок
-    except ValueError:
-        await message.answer("❌ Ошибка: ID должен быть целым числом. Пример: 123")
-        return
+# # Обработчик для ввода названия букета
+# @router_admin.message(StateFilter(AdminStates.AddBouquetName))
+# async def add_bouquet_name(message: types.Message, state: FSMContext):
+#     await state.update_data(name=message.text)
+#     await message.answer("Введите ID букета (целое число):")
+#     await state.set_state(AdminStates.AddBouquetID)
 
-    # Проверка существования ID
-    async with AsyncSessionLocal() as db:
-        existing_bouquet = await db.execute(select(Bouquet).where(Bouquet.bouquet_id == bouquet_id))
-        if existing_bouquet.scalars().first():
-            await message.answer("⚠️ Букет с таким ID уже существует.")
-            return
+# # Обработчик для ввода ID букета при добавлении
+# @router_admin.message(StateFilter(AdminStates.AddBouquetID))
+# async def add_bouquet_id(message: types.Message, state: FSMContext):
+#     try:
+#         bouquet_id = int(message.text)
+#     except ValueError:
+#         await message.answer("❌ ID должен быть числом.")
+#         return
 
-    await state.update_data(bouquet_id=bouquet_id)
-    await message.answer("Введите название букета:")
-    await state.set_state(AdminStates.AddBouquetName)
+#     async with AsyncSessionLocal() as db:
+#         existing = await db.execute(select(Bouquet).where(Bouquet.bouquet_id == bouquet_id))
+#         if existing.scalars().first():
+#             await message.answer("⚠️ Букет с таким ID уже существует.")
+#             return
 
-# Обработчик для ввода названия букета
-@router_admin.message(StateFilter(AdminStates.AddBouquetName))
-async def add_bouquet_name(message: types.Message, state: FSMContext):
-    await state.update_data(name=message.text)
+#     await state.update_data(bouquet_id=bouquet_id)
+    
+#     # Получаем клавиатуру с категориями
+#     keyboard = await get_categories_keyboard()
+#     await message.answer("Выберите категорию:", reply_markup=keyboard)
+#     await state.set_state(AdminStates.AddBouquetCategory)
 
-    # Получаем клавиатуру с категориями
-    keyboard = await get_categories_keyboard()
-    if not keyboard:
-        await message.answer("Категории не найдены. Сначала добавьте категорию.")
-        return
+# # Обработчик для выбора категории
+# @router_admin.callback_query(F.data.startswith("category_"))
+# async def process_category_selection(callback: types.CallbackQuery, state: FSMContext):
+#     data = callback.data
+#     parts = data.split("_")
+#     if len(parts) != 2 or not parts[1].isdigit():
+#         await callback.message.answer("❌ Ошибка: некорректные данные категории.")
+#         return
 
-    await message.answer("Выберите категорию:", reply_markup=keyboard)
-    await state.set_state(AdminStates.AddBouquetCategory)
+#     category_id = int(parts[1])
+#     await state.update_data(category_id=category_id)
+#     await callback.message.answer("Введите цену букета:")
+#     await state.set_state(AdminStates.AddBouquetPrice)
 
-# Обработчик для выбора категории
-@router_admin.callback_query(F.data.startswith("category_"))
-async def process_category_selection(callback: types.CallbackQuery, state: FSMContext):
-    try:
-        category_id = int(callback.data.split("_")[1])
-    except (IndexError, ValueError):
-        await callback.message.answer("Ошибка при выборе категории. Попробуйте снова.")
-        return  # Извлекаем ID категории
-    await state.update_data(category_id=category_id)
-    await callback.message.answer("Введите цену букета:")
-    await state.set_state(AdminStates.AddBouquetPrice)
+# @router_admin.message(StateFilter(AdminStates.AddBouquetPrice))
+# async def add_bouquet_price(message: types.Message, state: FSMContext):
+#     try:
+#         price = float(message.text)  # Пытаемся преобразовать в число
+#         await state.update_data(price=price)
+#         await message.answer("Введите описание букета:")
+#         await state.set_state(AdminStates.AddBouquetDescription)
+#     except ValueError:
+#         logger.error(f"Ошибка при вводе цены: {message.text}")
+#         await message.answer("Цена должна быть числом. Попробуйте снова или введите /cancel для отмены.")
 
-@router_admin.message(StateFilter(AdminStates.AddBouquetPrice))
-async def add_bouquet_price(message: types.Message, state: FSMContext):
-    try:
-        price = float(message.text)  # Пытаемся преобразовать в число
-        await state.update_data(price=price)
-        await message.answer("Введите описание букета:")
-        await state.set_state(AdminStates.AddBouquetDescription)
-    except ValueError:
-        logger.error(f"Ошибка при вводе цены: {message.text}")
-        await message.answer("Цена должна быть числом. Попробуйте снова или введите /cancel для отмены.")
+# @router_admin.message(StateFilter(AdminStates.AddBouquetDescription))
+# async def add_bouquet_description(message: types.Message, state: FSMContext):
+#     await state.update_data(description=message.text)
+#     await message.answer("Введите URL изображения букета: ")
+#     await state.set_state(AdminStates.AddBouquetImageURL)
 
-@router_admin.message(StateFilter(AdminStates.AddBouquetDescription))
-async def add_bouquet_description(message: types.Message, state: FSMContext):
-    await state.update_data(description=message.text)
-    await message.answer("Введите URL изображения букета: ")
-    await state.set_state(AdminStates.AddBouquetImageURL)
+# @router_admin.message(StateFilter(AdminStates.AddBouquetImageURL))
+# async def add_bouquet_image_url(message: types.Message, state: FSMContext):
+#     if not message.text.startswith("http"):
+#         await message.answer("URL должен начинаться с 'http'. Попробуйте снова.")
+#         return
 
-@router_admin.message(StateFilter(AdminStates.AddBouquetImageURL))
-async def add_bouquet_image_url(message: types.Message, state: FSMContext):
-    if not message.text.startswith("http"):
-        await message.answer("URL должен начинаться с 'http'. Попробуйте снова.")
-        return
+#     await state.update_data(image_url=message.text)
+#     data = await state.get_data()
 
-    await state.update_data(image_url=message.text)
-    data = await state.get_data()
+#     async with AsyncSessionLocal() as db:
+#         new_bouquet = Bouquet(
+#             bouquet_id=data["bouquet_id"],
+#             category_id=data.get("category_id"),
+#             name=data["name"],
+#             price=data["price"],
+#             description=data["description"],
+#             image_url=data["image_url"]
+#         )
+#         db.add(new_bouquet)
+#         await db.commit()
 
-    async with AsyncSessionLocal() as db:
-        new_bouquet = Bouquet(
-            category_id=data.get("category_id"),
-            name=data["name"],
-            price=data["price"],
-            description=data["description"],
-            image_url=data["image_url"]
-        )
-        db.add(new_bouquet)
-        await db.commit()
-
-    await message.answer("Букет успешно добавлен!")
-    await state.set_state(None)
+#     await message.answer("Букет успешно добавлен!")
+#     await state.set_state(None)
 
 @router_admin.message(Command("cancel"))
 async def cancel_operation(message: types.Message, state: FSMContext):
@@ -323,72 +323,73 @@ async def delete_bouquet_id(message: types.Message, state: FSMContext):
         await message.answer("ID должен быть числом. Попробуйте снова.")
 
 @router_admin.message(F.text == '🎉 Акции')
-async def add_promotion(message: types.Message, state: FSMContext):
+async def add_promotion_1(message: types.Message, state: FSMContext):
     await state.clear()  # Очищаем состояние
     await message.answer("Добавление, изменение и удаление акций:", reply_markup=admin_promotions_kb())
     
-# Команда для добавления акции
-@router_admin.callback_query(F.data == "add_promotion")
-async def add_promotion_start(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer("Введите название акции:")
-    await state.set_state(AdminStates.AddPromotionTitle)
+# # Команда для добавления акции
+# @router_admin.callback_query(F.data == "add_promotion")
+# async def add_promotion_start(callback: types.CallbackQuery, state: FSMContext):
+#     await callback.message.answer("Введите название акции:")
+#     await state.set_state(AdminStates.AddPromotionTitle)
+#     await callback.answer()  # Важно: подтверждаем callback
 
-@router_admin.message(StateFilter(AdminStates.AddPromotionTitle))
-async def add_promotion_title(message: types.Message, state: FSMContext):
-    await state.update_data(title=message.text)
-    await message.answer("Введите описание акции:")
-    await state.set_state(AdminStates.AddPromotionDescription)
+# @router_admin.message(StateFilter(AdminStates.AddPromotionTitle))
+# async def add_promotion_title(message: types.Message, state: FSMContext):
+#     await state.update_data(title=message.text)
+#     await message.answer("Введите описание акции:")
+#     await state.set_state(AdminStates.AddPromotionDescription)
 
-@router_admin.message(StateFilter(AdminStates.AddPromotionDescription))
-async def add_promotion_description(message: types.Message, state: FSMContext):
-    await state.update_data(description=message.text)
-    await message.answer("Введите скидку (в процентах):")
-    await state.set_state(AdminStates.AddPromotionDiscount)
+# @router_admin.message(StateFilter(AdminStates.AddPromotionDescription))
+# async def add_promotion_description(message: types.Message, state: FSMContext):
+#     await state.update_data(description=message.text)
+#     await message.answer("Введите скидку (в процентах):")
+#     await state.set_state(AdminStates.AddPromotionDiscount)
 
-@router_admin.message(StateFilter(AdminStates.AddPromotionDiscount))
-async def add_promotion_discount(message: types.Message, state: FSMContext):
-    try:
-        discount = float(message.text)
-        await state.update_data(discount=discount)
-        await message.answer("Введите дату начала акции (в формате ГГГГ-ММ-ДД):")
-        await state.set_state(AdminStates.AddPromotionStartDate)
-    except ValueError:
-        await message.answer("Скидка должна быть числом. Попробуйте снова.")
+# @router_admin.message(StateFilter(AdminStates.AddPromotionDiscount))
+# async def add_promotion_discount(message: types.Message, state: FSMContext):
+#     try:
+#         discount = float(message.text)
+#         await state.update_data(discount=discount)
+#         await message.answer("Введите дату начала акции (в формате ГГГГ-ММ-ДД):")
+#         await state.set_state(AdminStates.AddPromotionStartDate)
+#     except ValueError:
+#         await message.answer("Скидка должна быть числом. Попробуйте снова.")
 
-@router_admin.message(StateFilter(AdminStates.AddPromotionStartDate))
-async def add_promotion_start_date(message: types.Message, state: FSMContext):
-    try:
-        # Проверяем, что дата введена в правильном формате
-        datetime.strptime(message.text, "%Y-%m-%d")
-        await state.update_data(start_date=message.text)
-        await message.answer("Введите дату окончания акции (в формате ГГГГ-ММ-ДД):")
-        await state.set_state(AdminStates.AddPromotionEndDate)
-    except ValueError:
-        await message.answer("Неверный формат даты. Введите дату в формате ГГГГ-ММ-ДД.")
+# @router_admin.message(StateFilter(AdminStates.AddPromotionStartDate))
+# async def add_promotion_start_date(message: types.Message, state: FSMContext):
+#     try:
+#         # Проверяем, что дата введена в правильном формате
+#         datetime.strptime(message.text, "%Y-%m-%d")
+#         await state.update_data(start_date=datetime.strptime(message.text, "%Y-%m-%d").date())
+#         await message.answer("Введите дату окончания акции (в формате ГГГГ-ММ-ДД):")
+#         await state.set_state(AdminStates.AddPromotionEndDate)
+#     except ValueError:
+#         await message.answer("Неверный формат даты. Введите дату в формате ГГГГ-ММ-ДД.")
 
-@router_admin.message(StateFilter(AdminStates.AddPromotionEndDate))
-async def add_promotion_end_date(message: types.Message, state: FSMContext):
-    try:
-        # Проверяем, что дата введена в правильном формате
-        datetime.strptime(message.text, "%Y-%m-%d")
-        await state.update_data(end_date=message.text)
-        data = await state.get_data()
+# @router_admin.message(StateFilter(AdminStates.AddPromotionEndDate))
+# async def add_promotion_end_date(message: types.Message, state: FSMContext):
+#     try:
+#         # Проверяем, что дата введена в правильном формате
+#         datetime.strptime(message.text, "%Y-%m-%d")
+#         await state.update_data(end_date=datetime.strptime(message.text, "%Y-%m-%d").date())
+#         data = await state.get_data()
 
-        async with AsyncSessionLocal() as db:
-            new_promotion = Promotion(
-                title=data["title"],
-                description=data["description"],
-                discount=data["discount"],
-                start_date=data["start_date"],
-                end_date=data["end_date"]
-            )
-            db.add(new_promotion)
-            await db.commit()
+#         async with AsyncSessionLocal() as db:
+#             new_promotion = Promotion(
+#                 title=data["title"],
+#                 description=data["description"],
+#                 discount=data["discount"],
+#                 start_date=data["start_date"],
+#                 end_date=data["end_date"]
+#             )
+#             db.add(new_promotion)
+#             await db.commit()
 
-        await message.answer("Акция успешно добавлена!")
-        await state.set_state(None)
-    except ValueError:
-        await message.answer("Неверный формат даты. Введите дату в формате ГГГГ-ММ-ДД.")
+#         await message.answer("Акция успешно добавлена!")
+#         await state.set_state(None)
+#     except ValueError:
+#         await message.answer("Неверный формат даты. Введите дату в формате ГГГГ-ММ-ДД.")
 
 # Команда для изменения акций
 @router_admin.callback_query(F.data == "edit_promotion")
@@ -533,7 +534,6 @@ async def view_active_promotions(callback: types.CallbackQuery):
 
         await callback.message.answer(response, parse_mode=ParseMode.HTML)
 
-
 # Функция для получения заказов
 async def get_admin_orders(db: AsyncSession):
     result = await db.execute(
@@ -565,34 +565,37 @@ async def update_order_status(db: AsyncSession, order_id: int, new_status: str):
 async def show_orders_menu(message: types.Message):
     await message.answer("Меню управления заказами:", reply_markup=get_orders_menu_keyboard())
     
-
-    
 @router_admin.callback_query(F.data == "view_orders")
-async def view_orders(callback: types.CallbackQuery):
-    async with AsyncSessionLocal() as db:
-        orders = await get_admin_orders(db)
-        if orders:
+async def view_orders_handler(callback: types.CallbackQuery):
+    try:
+        await callback.answer()  # Важно: всегда отвечаем на callback сначала
+        await callback.message.answer("Загружаю список заказов...")
+        
+        async with AsyncSessionLocal() as db:
+            orders = await get_admin_orders(db)
+            if not orders:
+                await callback.message.answer("Нет доступных заказов.")
+                return
+                
             for order in orders:
-                items_info = "Товары:\n"
-                if order.items:
-                    for item in order.items:
-                        items_info += (
-                            f"🔹 {item.bouquet.name} (x{item.quantity}) - {item.price} руб.\n"
-                        )
-                else:
-                    items_info += "Нет товаров.\n"
-
+                items_info = "\n".join(
+                    f"🔹 {item.bouquet.name} (x{item.quantity}) - {item.price} руб."
+                    for item in order.items
+                ) if order.items else "Нет товаров"
+                
                 await callback.message.answer(
                     f"Заказ №{order.order_id}\n"
-                    f"Пользователь: {order.user_id}\n"
-                    f"Сумма: {order.total_price} руб.\n"
-                    f"Тип доставки: {order.delivery_type}\n"
-                    f"Статус: {order.status}\n"
-                    f"Дата создания: {format_date(order.created_at)}\n"
-                    f"{items_info}"
+                    f"👤 Пользователь: {order.user_id}\n"
+                    f"💰 Сумма: {order.total_price} руб.\n"
+                    f"🚚 Доставка: {order.delivery_type}\n"
+                    f"📊 Статус: {order.status}\n"
+                    f"📅 Дата: {order.created_at.strftime('%d.%m.%Y %H:%M')}\n"
+                    f"📦 Товары:\n{items_info}"
                 )
-        else:
-            await callback.message.answer("Нет заказов.")
+                
+    except Exception as e:
+        logger.error(f"Ошибка в view_orders: {e}")
+        await callback.message.answer("⚠️ Ошибка при загрузке заказов")
             
 @router_admin.callback_query(F.data == "search_order_by_id")
 async def search_order_by_id(callback: types.CallbackQuery, state: FSMContext):
@@ -638,28 +641,51 @@ async def process_search_order_by_id(message: types.Message, state: FSMContext):
             
 @router_admin.callback_query(F.data == "change_order_status")
 async def change_order_status(callback: types.CallbackQuery):
-    async with AsyncSessionLocal() as db:
-        orders = await get_admin_orders(db)
+    try:
+        async with AsyncSessionLocal() as db:
+            orders = await get_admin_orders(db)
+            
+            if not orders:
+                await callback.message.answer("Нет заказов для изменения статуса.")
+                return
+            
+            # Создаем список кнопок для клавиатуры
+            buttons = []
+            for order in orders:
+                buttons.append([InlineKeyboardButton(
+                    text=f"Заказ №{order.order_id} ({order.status})",
+                    callback_data=f"select_order_for_status_{order.order_id}"
+                )])
+            
+            # Создаем клавиатуру с кнопками
+            keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+            await callback.message.answer("Выберите заказ для изменения статуса:", reply_markup=keyboard)
+            await callback.answer()  # Важно: подтверждаем callback
+    except Exception as e:
+        logger.error(f"Error in change_order_status: {e}")
+        await callback.message.answer("Произошла ошибка при получении списка заказов.")
+
+@router_admin.callback_query(F.data.startswith("select_order_for_status_"))
+async def select_order_for_status(callback: types.CallbackQuery, state: FSMContext):
+    try:
+        order_id = int(callback.data.split("_")[-1])
+        await state.update_data(order_id=order_id)
         
-        # Создаем список кнопок для клавиатуры
-        buttons = []
-        for order in orders:
-            buttons.append([InlineKeyboardButton(
-                text=f"Заказ №{order.order_id}",
-                callback_data=f"change_order_status_{order.order_id}"
-            )])
-        
-        # Создаем клавиатуру с кнопками
+        # Предлагаем варианты статусов
+        buttons = [
+            [InlineKeyboardButton(text="В обработке", callback_data="set_status_processing")],
+            [InlineKeyboardButton(text="В доставке", callback_data="set_status_delivering")],
+            [InlineKeyboardButton(text="Завершен", callback_data="set_status_completed")],
+            [InlineKeyboardButton(text="Отменен", callback_data="set_status_cancelled")]
+        ]
         keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-
-        await callback.message.answer("Выберите заказ для изменения статуса:", reply_markup=keyboard)
-
-@router_admin.callback_query(F.data.startswith("change_order_status_"))
-async def process_change_order_status(callback: types.CallbackQuery, state: FSMContext):
-    order_id = int(callback.data.split("_")[-1])
-    await state.update_data(order_id=order_id)
-    await state.set_state(AdminStates.WaitingForStatus)
-    await callback.message.answer("Введите новый статус заказа (например, 'выполнен' или 'отменен'):")
+        
+        await callback.message.answer("Выберите новый статус заказа:", reply_markup=keyboard)
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Error in select_order_for_status: {e}")
+        await callback.message.answer("Ошибка при выборе заказа.")
 
 @router_admin.message(AdminStates.WaitingForStatus, F.text)
 async def save_changed_order_status(message: types.Message, state: FSMContext):
@@ -678,106 +704,133 @@ async def save_changed_order_status(message: types.Message, state: FSMContext):
             await message.answer("Заказ не найден.")
 
     await state.clear()
+    
+    
+@router_admin.callback_query(F.data.startswith("set_status_"))
+async def set_order_status(callback: types.CallbackQuery, state: FSMContext):
+    try:
+        status_mapping = {
+            "set_status_processing": "в обработке",
+            "set_status_delivering": "в доставке",
+            "set_status_completed": "завершен",
+            "set_status_cancelled": "отменен"
+        }
+        
+        status_key = callback.data
+        new_status = status_mapping.get(status_key)
+        
+        if not new_status:
+            await callback.message.answer("Неизвестный статус.")
+            return
+            
+        data = await state.get_data()
+        order_id = data.get('order_id')
+        
+        if not order_id:
+            await callback.message.answer("Не удалось определить заказ.")
+            return
+            
+        async with AsyncSessionLocal() as db:
+            order = await update_order_status(db, order_id, new_status)
+            if order:
+                await callback.message.answer(f"Статус заказа №{order_id} изменен на '{new_status}'.")
+            else:
+                await callback.message.answer("Не удалось обновить статус заказа.")
+                
+        await state.clear()
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Error in set_order_status: {e}")
+        await callback.message.answer("Произошла ошибка при изменении статуса.")
 
-
-
-# Обработчик для необработанных callback-запросов
 @router_admin.callback_query()
-async def handle_unprocessed_callbacks(callback: types.CallbackQuery):
-    await callback.answer("Действие не распознано.")
+async def handle_unexpected_callback(callback: types.CallbackQuery, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state:
+        await callback.answer("Пожалуйста, завершите текущую операцию перед другими действиями.")
+    else:
+        await callback.answer("Нераспознанное действие.")
 
-# Обработчик для нераспознанных команд
-@router_admin.message()
-async def handle_unknown_commands(message: types.Message):
-    await message.answer("Команда не распознана. Введите /help для списка доступных команд.")
-
-
-
-
-
-
-
-
-# # Статистика
-# @router_admin.message(F.text == "📊 Статистика")
-# async def show_statistics(message: types.Message):
-#     # Проверка, что команду вызвал администратор
-#     if message.from_user.id != ADMIN_ID1:
-#         return
+# Статистика
+@router_admin.message(F.text == "📊 Статистика")
+async def show_statistics(message: types.Message):
+    # Проверка, что команду вызвал администратор
+    if message.from_user.id != ADMIN_ID1:
+        return
     
-#     async with AsyncSessionLocal() as session:
-#         try:
-#             # Общее количество заказов
-#             total_orders = await session.execute(select(func.count(Order.order_id)))
-#             total_orders = total_orders.scalar()
+    async with AsyncSessionLocal() as session:
+        try:
+            # Общее количество заказов
+            total_orders = await session.execute(select(func.count(Order.order_id)))
+            total_orders = total_orders.scalar()
             
-#             # Общая сумма продаж
-#             total_sales = await session.execute(select(func.sum(Order.total_price)))
-#             total_sales = total_sales.scalar() or 0  # Если сумма NULL, возвращаем 0
+            # Общая сумма продаж
+            total_sales = await session.execute(select(func.sum(Order.total_price)))
+            total_sales = total_sales.scalar() or 0  # Если сумма NULL, возвращаем 0
             
-#             # Количество пользователей
-#             total_users = await session.execute(select(func.count(User.user_id)))
-#             total_users = total_users.scalar()
+            # Количество пользователей
+            total_users = await session.execute(select(func.count(User.user_id)))
+            total_users = total_users.scalar()
             
-#             # Статистика за последние 24 часа
-#             yesterday = datetime.now() - timedelta(days=1)
-#             recent_orders = await session.execute(
-#                 select(func.count(Order.order_id))
-#                 .where(Order.created_at >= yesterday)
-#             )
-#             recent_orders = recent_orders.scalar()
+            # Статистика за последние 24 часа
+            yesterday = datetime.now() - timedelta(days=1)
+            recent_orders = await session.execute(
+                select(func.count(Order.order_id))
+                .where(Order.created_at >= yesterday)
+            )
+            recent_orders = recent_orders.scalar()
             
-#             # Формируем текст сообщения
-#             stats_text = f"""
-# 📊 *Общая статистика магазина*
+            # Формируем текст сообщения
+            stats_text = f"""
+📊 *Общая статистика магазина*
 
-# 📦 Всего заказов: {total_orders}
-# 💰 Общая сумма продаж: {total_sales:.2f}₽
-# 👥 Количество пользователей: {total_users}
-# 🕒 Заказов за 24 часа: {recent_orders}
-#             """
+📦 Всего заказов: {total_orders}
+💰 Общая сумма продаж: {total_sales:.2f}₽
+👥 Количество пользователей: {total_users}
+🕒 Заказов за 24 часа: {recent_orders}
+            """
             
-#             # Отправляем сообщение с клавиатурой
-#             await message.answer(stats_text, reply_markup=kb_admin.main1_admin)
+            # Отправляем сообщение с клавиатурой
+            await message.answer(stats_text, reply_markup=kb_admin.main1_admin)
         
-#         except Exception as e:
-#             # Логируем ошибку, если что-то пошло не так
-#             logger.error(f"Ошибка при получении статистики: {e}")
-#             await message.answer("Произошла ошибка при получении данных. Попробуйте позже.")
+        except Exception as e:
+            # Логируем ошибку, если что-то пошло не так
+            logger.error(f"Ошибка при получении статистики: {e}")
+            await message.answer("Произошла ошибка при получении данных. Попробуйте позже.")
 
-# # Управление пользователями
-# @router_admin.message(F.text == "👥 Пользователи")
-# async def manage_users(message: types.Message):
-#     # Проверка, что команду вызвал администратор
-#     if message.from_user.id != ADMIN_ID1:
-#         return
+# Управление пользователями
+@router_admin.message(F.text == "👥 Пользователи")
+async def manage_users(message: types.Message):
+    # Проверка, что команду вызвал администратор
+    if message.from_user.id != ADMIN_ID1:
+        return
     
-#     async with AsyncSessionLocal() as session:
-#         try:
-#             # Получаем общее количество пользователей
-#             total_users = await session.execute(select(func.count(User.user_id)))
-#             total_users = total_users.scalar()
+    async with AsyncSessionLocal() as session:
+        try:
+            # Получаем общее количество пользователей
+            total_users = await session.execute(select(func.count(User.user_id)))
+            total_users = total_users.scalar()
             
-#             # Получаем количество активных пользователей
-#             active_users = await session.execute(
-#                 select(func.count(User.user_id))
-#                 .where(User.is_active == True)
-#             )
-#             active_users = active_users.scalar()
+            # Получаем количество активных пользователей
+            active_users = await session.execute(
+                select(func.count(User.user_id))
+                .where(User.is_active == True)
+            )
+            active_users = active_users.scalar()
             
-#             # Формируем текст сообщения
-#             users_text = f"""
-# 👥 *Управление пользователями*
+            # Формируем текст сообщения
+            users_text = f"""
+👥 *Управление пользователями*
 
-# 👤 Всего пользователей: {total_users}
-# ✅ Активные: {active_users}
-# ❌ Неактивные: {total_users - active_users}
-#             """
+👤 Всего пользователей: {total_users}
+✅ Активные: {active_users}
+❌ Неактивные: {total_users - active_users}
+            """
             
-#             # Отправляем сообщение с клавиатурой
-#             await message.answer(users_text, reply_markup=kb_admin.main1_admin)
+            # Отправляем сообщение с клавиатурой
+            await message.answer(users_text, reply_markup=kb_admin.main1_admin)
         
-#         except Exception as e:
-#             # Логируем ошибку, если что-то пошло не так
-#             logger.error(f"Ошибка при получении статистики пользователей: {e}")
-#             await message.answer("Произошла ошибка при получении данных. Попробуйте позже.")
+        except Exception as e:
+            # Логируем ошибку, если что-то пошло не так
+            logger.error(f"Ошибка при получении статистики пользователей: {e}")
+            await message.answer("Произошла ошибка при получении данных. Попробуйте позже.")

@@ -9,19 +9,19 @@ from sqlalchemy.future import select
 main_admin = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='📦 Заказы'), KeyboardButton(text='👤 Профиль')],
     [KeyboardButton(text='💐 Букеты'), KeyboardButton(text='🎉 Акции')],
-    # [KeyboardButton(text='📊 Статистика'), KeyboardButton(text='👥 Пользователи')],
+    [KeyboardButton(text='📊 Статистика'), KeyboardButton(text='👥 Пользователи')],
     # [KeyboardButton(text='⚙️ Настройки'), KeyboardButton(text='❓ Помощь')],
 ], resize_keyboard=True, input_field_placeholder='Выберите раздел админ-панели')
 
 
 main1_admin = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='💐 Букеты'), KeyboardButton(text='👤 Профиль')],
-    [KeyboardButton(text='🎉 Акции'), KeyboardButton(text='👥 Пользователи')],
+    [KeyboardButton(text='🎉 Акции'), KeyboardButton(text='меню')],
 ], resize_keyboard=True, input_field_placeholder='Выберите раздел админ-панели')
 
 def admin_bouquets_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Добавить букет", callback_data="add_bouquet")],
+        # [InlineKeyboardButton(text="➕ Добавить букет", callback_data="add_bouquet")],
         [InlineKeyboardButton(text="✏️ Изменить букет", callback_data="edit_bouquet")],
         [InlineKeyboardButton(text="❌ Удалить букет", callback_data="delete_bouquet")],
         # [InlineKeyboardButton(text="Отмена", callback_data="cancel")],
@@ -33,7 +33,7 @@ def admin_bouquets_kb():
 
 def admin_promotions_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Добавить акцию", callback_data="add_promotion")],
+        # [InlineKeyboardButton(text="➕ Добавить акцию", callback_data="add_promotion")],
         [InlineKeyboardButton(text="✏️ Изменить акцию", callback_data="edit_promotion")],
         [InlineKeyboardButton(text="❌ Удалить акцию", callback_data="delete_promotion")],
         [InlineKeyboardButton(text="📅 Активные акции", callback_data="active_promotions")],
@@ -68,13 +68,12 @@ async def get_categories_keyboard():
         return builder.as_markup()
 
 def get_orders_menu_keyboard():
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="📦 Просмотреть заказы", callback_data="view_orders"),
-            InlineKeyboardButton(text="🔄 Изменить статус заказа", callback_data="change_order_status")
+            InlineKeyboardButton(text="🔄 Изменить статус", callback_data="change_order_status")
         ],
         [
-            InlineKeyboardButton(text="🔍 Поиск заказа по ID", callback_data="search_order_by_id")
+            InlineKeyboardButton(text="🔍 Поиск по ID", callback_data="search_order_by_id")
         ]
     ])
-    return keyboard
