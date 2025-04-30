@@ -28,7 +28,7 @@ category1 = ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text='День Рождение' ), KeyboardButton(text='8 марта' )],  
     [KeyboardButton(text='в корзине' ), KeyboardButton(text='в коробке' )],  
     [KeyboardButton(text='Мужские' ), KeyboardButton(text='Свадебные' )],  
-    [KeyboardButton(text='Спасибо' ), KeyboardButton(text='Вместо извенений' )],  
+    [KeyboardButton(text='Спасибо' ), KeyboardButton(text='Вместо извинений' )],  
     [KeyboardButton(text='День матери' ), KeyboardButton(text='Монобукеты' )],  
     [KeyboardButton(text='Траурные' ), KeyboardButton(text='Составные' )],  
     # [KeyboardButton(text='Цветы по штучно' )],
