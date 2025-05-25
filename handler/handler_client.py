@@ -20,13 +20,14 @@ from aiogram.exceptions import TelegramAPIError, TelegramBadRequest
 from aiogram import Bot
 import os
 import logging
+from datetime import datetime
 
 router_client = Router()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 import keyboard.keyboard_client as kb
 
-ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "168024693"))
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_IDS"))
 
 async def notify_admin(bot: Bot, message: str):
     """
@@ -717,9 +718,9 @@ async def choose_payment(callback: CallbackQuery, state: FSMContext, bot: Bot):
     # Получаем ВСЕ данные из состояния
     data = await state.get_data()
     cart_items = data["cart_items"]
-    delivery_type = data["delivery_type"]  # Получаем оригинальное значение доставки
+    delivery_type = data["delivery_type"]
     delivery_type_russian = data["delivery_type_russian"]
-    payment_method = data["payment_method"]  # Получаем оригинальное значение оплаты
+    payment_method = data["payment_method"]
 
     # Рассчитываем общую стоимость
     total_price = sum(
@@ -751,18 +752,16 @@ async def choose_payment(callback: CallbackQuery, state: FSMContext, bot: Bot):
     # Сохраняем заказ в базу данных
     async with AsyncSessionLocal() as db:
         try:
-            # Создаем новый заказ (используем оригинальные значения из state)
+            # Создаем новый заказ
             new_order = Order(
                 user_id=callback.from_user.id,
                 total_price=total_price,
-                delivery_type=delivery_type,  # Используем значение из state
-                payment_method=payment_method,  # Используем значение из state
-                status="Принят"  # Статус по умолчанию
+                delivery_type=delivery_type,
+                payment_method=payment_method,
+                status="Принят"
             )
             db.add(new_order)
             await db.commit()
-
-            # Получаем ID созданного заказа
             await db.refresh(new_order)
             order_id = new_order.order_id
 
@@ -782,18 +781,49 @@ async def choose_payment(callback: CallbackQuery, state: FSMContext, bot: Bot):
             await db.execute(delete(Cart).where(Cart.user_id == callback.from_user.id))
             await db.commit()
 
+            # Получаем пользователя из БД для номера телефона
+            user_query = await db.execute(
+                select(User).where(User.user_id == callback.from_user.id))
+            user = user_query.scalars().first()
+
+            # Формируем сообщение для администратора
+            admin_message = (
+                f"🛒 *Новый заказ!* №{order_id}\n\n"
+                f"👤 *Клиент:* {callback.from_user.full_name} "
+                f"(@{callback.from_user.username or 'нет username'})\n"
+                f"📞 *Телефон:* {user.phone if user and user.phone else 'не указан'}\n"
+                f"📅 *Дата заказа:* {datetime.now().strftime('%d.%m.%Y %H:%M')}\n\n"
+                f"📦 *Состав заказа:*\n"
+            )
+            
+            for item in cart_items:
+                if item.bouquet:
+                    admin_message += f"  - {item.bouquet.name} x{item.quantity} = {item.bouquet.price * item.quantity} руб.\n"
+            
+            admin_message += (
+                f"\n💰 *Итого:* {total_price} руб.\n"
+                f"🚚 *Доставка:* {delivery_type_russian}\n"
+                f"💳 *Оплата:* {payment_method_russian}\n\n"
+                f"🆔 *ID заказа:* {order_id}"
+            )
+
+            # Отправляем уведомление администратору
+            try:
+                if ADMIN_CHAT_ID:
+                    await bot.send_message(
+                        chat_id=ADMIN_CHAT_ID,
+                        text=admin_message,
+                        parse_mode="Markdown"
+                    )
+                else:
+                    logger.warning("ADMIN_CHAT_ID не установлен, уведомление не отправлено")
+            except Exception as e:
+                logger.error(f"Ошибка при отправке уведомления администратору: {e}")
+
         except Exception as e:
             logger.error(f"Ошибка при сохранении заказа: {e}")
             await callback.answer("Произошла ошибка при оформлении заказа. Пожалуйста, попробуйте позже.")
             return
-
-    # Уведомляем администратора
-    admin_message = (
-        f"Новый заказ!\n\n"
-        f"Пользователь: {callback.from_user.full_name} (ID: {callback.from_user.id})\n"
-        f"Заказ:\n{order_text}"
-    )
-    await notify_admin(bot, admin_message)  # Используем функцию для уведомления администратора
 
     # Уведомляем пользователя об успешном оформлении
     await callback.answer("Заказ успешно оформлен! С вами свяжется администратор.")

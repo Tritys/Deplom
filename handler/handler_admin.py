@@ -108,7 +108,7 @@ async def get_categories_keyboard():
 @router_admin.message(F.text == '💐 Букеты')
 async def add_bouquet(message: types.Message, state: FSMContext):
     await state.clear()  # Очищаем состояние
-    await message.answer("Добавление, изменение и удаление букетов:", reply_markup=admin_bouquets_kb())
+    await message.answer("Изменение и удаление букетов:", reply_markup=admin_bouquets_kb())
 
 # # Команда для добавления нового букета
 # @router_admin.callback_query(F.data == "add_bouquet")
@@ -325,7 +325,7 @@ async def delete_bouquet_id(message: types.Message, state: FSMContext):
 @router_admin.message(F.text == '🎉 Акции')
 async def add_promotion_1(message: types.Message, state: FSMContext):
     await state.clear()  # Очищаем состояние
-    await message.answer("Добавление, изменение и удаление акций:", reply_markup=admin_promotions_kb())
+    await message.answer("Изменение, удаление и просмотр активных акций:", reply_markup=admin_promotions_kb())
     
 # # Команда для добавления акции
 # @router_admin.callback_query(F.data == "add_promotion")
